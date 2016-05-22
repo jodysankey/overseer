@@ -29,47 +29,6 @@ public class ExecutionHistory implements Serializable {
   
   private static final long serialVersionUID = 5493571979980728178L;
 
-  public static class ExecutionEvent implements Serializable {
-    private static final long serialVersionUID = -643219034946287968L;
-    private final Instant start;
-    private final Instant end;
-    private final int exitCode;
-    
-    /**
-     * Constructs a new {@link ExecutionEvent}.
-     * 
-     * @param start the {@link Instant} at which execution started.
-     * @param end the [approximate] {@link Instant} at which execution ended.
-     * @param exitCode the exit code returned upon completion.
-     */
-    public ExecutionEvent(Instant start, Instant end, int exitCode) {
-      Preconditions.checkArgument(end.isAfter(start));
-      this.start = start;
-      this.end = end;
-      this.exitCode = exitCode;
-    }
-
-    public Instant getStart() {
-      return start;
-    }
-
-    public Instant getEnd() {
-      return end;
-    }
-
-    public long getDurationMillis() {
-      return end.toEpochMilli() - start.toEpochMilli();
-    }
-
-    public int getExitCode() {
-      return exitCode;
-    }
-    
-    public boolean isSuccessful() {
-      return exitCode == 0;
-    }
-  }
-
   public enum HistoryStatus {
     /** All commands have successfully completed on their last execution */
     ALL_PASSED,
@@ -87,7 +46,7 @@ public class ExecutionHistory implements Serializable {
   /** Path in which we attempt to store and recover the execution history. */
   transient private Optional<String> filePath;
   /** Map of the {@link ExecutionEvent} lists for each command */
-  private ImmutableMap<String, Deque<ExecutionEvent>> historyMap;
+  private ImmutableMap<String, Deque<CommandEvent>> historyMap;
   /** Cached calculated overall status */
   private HistoryStatus status;
   /** Cached calculated time of status */
@@ -105,9 +64,9 @@ public class ExecutionHistory implements Serializable {
     this.filePath = filePath;
     
     // Construct a valid clean history map.
-    ImmutableMap.Builder<String, Deque<ExecutionEvent>> historyMapBuilder = ImmutableMap.builder();
+    ImmutableMap.Builder<String, Deque<CommandEvent>> historyMapBuilder = ImmutableMap.builder();
     for (String command : commands) {
-      historyMapBuilder.put(command, new ArrayDeque<ExecutionEvent>(MAX_HISTORY_SIZE));
+      historyMapBuilder.put(command, new ArrayDeque<CommandEvent>(MAX_HISTORY_SIZE));
     }
     historyMap = historyMapBuilder.build();
 
@@ -144,7 +103,7 @@ public class ExecutionHistory implements Serializable {
   public static ExecutionHistory from(Configuration config) {
     return new ExecutionHistory(config.getStatusFile(), config.getCommands());
   }
-  
+   
   /**
    * Records the successful or unsuccessful completion of a command in the command history,
    * updating the history file if one was specified.
@@ -155,25 +114,35 @@ public class ExecutionHistory implements Serializable {
    * @param exitCode the exit code returned upon completion.
    */
   public synchronized void recordEvent(String command, Instant start, Instant end, int exitCode) {
-    Deque<ExecutionEvent> history = historyMap.get(command);
+    recordEvent(command, new CommandEvent(start, end, exitCode));
+  }
+
+  /**
+   * Records the successful or unsuccessful completion of a command in the command history,
+   * updating the history file if one was specified.
+   * 
+   * @param command the command that was run
+   * @param event a {@link CommandEvent} describing the execution times and result
+   */
+  public synchronized void recordEvent(String command, CommandEvent event) {
+    Deque<CommandEvent> history = historyMap.get(command);
     Preconditions.checkNotNull(history, "Asked to record event for unknown command " + command);
 
     if (!history.isEmpty()) {
-      if (end.isBefore(history.getLast().getEnd())) {
+      if (event.getEnd().isBefore(history.getLast().getEnd())) {
         // Ensure we keep the history monotonically increasing. This problem could occur in cases
         // of system clock problems, so don't throw an exception here, just ignore.
         LOG.warning(String.format("Ignoring new event at earlier time than history (%d < %d)",
-            end.getEpochSecond(), history.getLast().getEnd().getEpochSecond()));
+            event.getEnd().getEpochSecond(), history.getLast().getEnd().getEpochSecond()));
         return;
       }
     }
 
     // Mutate our deque for this command, clearing space if necessary.
-    ExecutionEvent newEvent = new ExecutionEvent(start, end, exitCode);
     if (history.size() >= MAX_HISTORY_SIZE) {
       history.removeFirst();
     }
-    history.addLast(newEvent);
+    history.addLast(event);
     recalculateSummaryState();
     
     // If possible, save our new state to disk.
@@ -189,8 +158,8 @@ public class ExecutionHistory implements Serializable {
   /**
    * Returns an immutable copy of the execution history for the specified command.
    */
-  public synchronized ImmutableList<ExecutionEvent> getCommandHistory(String command) {
-    Deque<ExecutionEvent> history = historyMap.get(command);
+  public synchronized ImmutableList<CommandEvent> getCommandHistory(String command) {
+    Deque<CommandEvent> history = historyMap.get(command);
     Preconditions.checkNotNull(history, "Asked to return history for unknown command " + command);
     return ImmutableList.copyOf(history);
   }
@@ -226,13 +195,13 @@ public class ExecutionHistory implements Serializable {
     Instant oldestSuccess = Instant.MAX;
     status = HistoryStatus.ALL_PASSED;
     
-    for (Deque<ExecutionEvent> commandHistory : historyMap.values()) {
+    for (Deque<CommandEvent> commandHistory : historyMap.values()) {
       if (commandHistory.isEmpty()) {
         if (status == HistoryStatus.ALL_PASSED) {
           status = HistoryStatus.NOT_ALL_RUN;
         }
       } else {
-        ExecutionEvent lastEvent = commandHistory.getLast();
+        CommandEvent lastEvent = commandHistory.getLast();
         if (lastEvent.isSuccessful()) {
           if (lastEvent.getEnd().isBefore(oldestSuccess)) {
             oldestSuccess = lastEvent.getEnd();

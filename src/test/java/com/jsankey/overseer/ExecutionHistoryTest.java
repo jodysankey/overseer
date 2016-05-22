@@ -29,7 +29,7 @@ public class ExecutionHistoryTest {
   private static final int FAILURE_CODE = 99;
   
   @Rule
-  public TemporaryFolder tempfolder = new TemporaryFolder();
+  public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Test
   public void testCommandSuccess() {
@@ -82,7 +82,7 @@ public class ExecutionHistoryTest {
   
   @Test
   public void testRestorationFromFile() {
-    Path configPath = Paths.get(tempfolder.getRoot().getAbsolutePath(), "test-history.cfg");
+    Path configPath = Paths.get(tempFolder.getRoot().getAbsolutePath(), "test-history.cfg");
     Configuration initialConfig = Configuration.from(new String[]{
         "--status_file", configPath.toString(), "--command", COMMAND_1, "--command", COMMAND_2});
     ExecutionHistory initialHistory = ExecutionHistory.from(initialConfig);
