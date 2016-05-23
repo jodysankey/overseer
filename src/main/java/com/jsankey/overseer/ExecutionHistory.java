@@ -28,6 +28,12 @@ import com.google.common.collect.ImmutableMap;
 public class ExecutionHistory implements Serializable {
   
   private static final long serialVersionUID = 5493571979980728178L;
+  
+  /** The maximum number of executions that are retained for each command. */
+  @VisibleForTesting
+  static final int MAX_HISTORY_SIZE = 10;
+  /** Logger for the current class. */
+  private static final Logger LOG = Logger.getLogger(ExecutionHistory.class.getCanonicalName());
 
   public enum HistoryStatus {
     /** All commands have successfully completed on their last execution */
@@ -37,14 +43,9 @@ public class ExecutionHistory implements Serializable {
     /** One or more commands failed on their last execution */
     FAILED
   }
-  
-  /** The maximum number of executions that are retained for each command. */
-  @VisibleForTesting
-  static final int MAX_HISTORY_SIZE = 10;
-  /** Logger for the current class. */
-  private static final Logger LOG = Logger.getLogger("bob");
+
   /** Path in which we attempt to store and recover the execution history. */
-  transient private Optional<String> filePath;
+  private Optional<String> filePath;
   /** Map of the {@link ExecutionEvent} lists for each command */
   private ImmutableMap<String, Deque<CommandEvent>> historyMap;
   /** Cached calculated overall status */
