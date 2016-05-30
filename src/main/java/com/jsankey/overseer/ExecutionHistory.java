@@ -232,9 +232,9 @@ public class ExecutionHistory implements Serializable {
    */
   private synchronized void writeToFile() throws IOException {
     Preconditions.checkArgument(filePath.isPresent());
-    ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filePath.get()));
-    oos.writeObject(this);
-    oos.close();
+    try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filePath.get()))) {
+      oos.writeObject(this);
+    }
   }
   
   /**
@@ -251,9 +251,10 @@ public class ExecutionHistory implements Serializable {
   private synchronized ExecutionHistory readFromFile()
       throws FileNotFoundException, IOException, ClassNotFoundException {
     Preconditions.checkArgument(filePath.isPresent());
-    ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filePath.get()));
-    ExecutionHistory reconstructed = (ExecutionHistory)ois.readObject();
-    ois.close();
+    ExecutionHistory reconstructed;
+    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filePath.get()))) {
+      reconstructed = (ExecutionHistory)ois.readObject();
+    }
     return reconstructed;
   }
 }
