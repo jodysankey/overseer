@@ -96,13 +96,18 @@ public class CommandRunner {
    * Begins execution of the command then returns immediately.
    * 
    * <p>Preconditions: The command is not already executing.
-   * @throws IOException 
    */
-  public synchronized void start() throws IOException {
+  public synchronized void start() {
     Preconditions.checkState(process == null, "Command is already running");  
     startTime = clock.instant();
-    process = builder.start();
-    LOG.info("Starting command: " + command);
+    try {
+      LOG.info("Starting command: " + command);
+      process = builder.start();
+    } catch (IOException e) {
+      LOG.info("Command failed initialization: " + command);
+      lastEvent = new CommandEvent(startTime, clock.instant(), CommandEvent.COULD_NOT_START);
+      process = null;
+    }
   }
   
   /**

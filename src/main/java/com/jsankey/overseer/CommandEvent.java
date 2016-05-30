@@ -13,8 +13,11 @@ import com.google.common.base.Preconditions;
  */
 public class CommandEvent implements Serializable {
   
+  /** The exit code used when a command threw an exception during initialization. */
+  public static final int COULD_NOT_START = 998;
   /** The exit code used when a command was forcible terminated instead of ending naturally. */
   public static final int ENFORCED_TERMINATION = 999;
+
   private static final long serialVersionUID = -643219034946287968L;
   private final Instant start;
   private final Instant end;
