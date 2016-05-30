@@ -6,25 +6,51 @@
  * user guide available at https://docs.gradle.org/2.9/userguide/tutorial_java_projects.html
  */
 
-// Apply the java plugin to add support for Java
-apply plugin: 'java'
-
-// In this section you declare where to find the dependencies of your project
+// Declare where to find the dependencies
 repositories {
     // Use 'jcenter' for resolving your dependencies.
     jcenter()
 }
 
-// In this section you declare the dependencies for your production and test code
+// Apply the java plugin to add support for Java
+apply plugin: 'java'
+
+// Enable one jar
+apply plugin: 'gradle-one-jar'
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.rholder:gradle-one-jar:1.0.4'
+    }
+}
+
+// Declare the dependencies for production and test code
 dependencies {
-    // SLF4J Logging (not yet used)
-    compile 'org.slf4j:slf4j-api:1.7.13'
+    // Compile time dependencies to inlcude in the JAR
     compile 'com.google.guava:guava:19.0'
     compile 'net.sf.jopt-simple:jopt-simple:5.0.1'
     // Nullable annotation
     compile 'com.google.code.findbugs:jsr305:1.3.+'
 
+    // Unit test dependencies
     testCompile 'junit:junit:4.12'
     testCompile "com.google.truth:truth:0.28"
     testCompile "org.mockito:mockito-core:1.+"
+}
+
+// Declare the jsankey-only JAR properties 
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.jsankey.overseer.OverseerApplication'
+    }
+}
+
+// And a self-contained JAR including dependencies
+task jarBundle(type: OneJar) {
+  archiveName = 'OverseerBundle.jar'
+  mainClass = 'com.jsankey.overseer.OverseerApplication'
+  // Adding a group marks the task as public for display in BuildShip
+  group = 'OneJar'
 }
