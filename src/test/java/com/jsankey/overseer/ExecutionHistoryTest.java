@@ -38,7 +38,8 @@ public class ExecutionHistoryTest {
     history.recordEvent(COMMAND_1, T2, T3, SUCCESS_CODE);
     history.recordEvent(COMMAND_2, T1, T2, SUCCESS_CODE);
     assertThat(history.getStatus()).isEqualTo(HistoryStatus.ALL_PASSED);
-    assertThat(history.getStatusTime()).isEqualTo(Optional.of(T2));
+    assertThat(history.getOldestStart()).isEqualTo(Optional.of(T1));
+    assertThat(history.getNewestFailure()).isEqualTo(Optional.absent());
   }
    
   @Test
@@ -46,7 +47,8 @@ public class ExecutionHistoryTest {
     ExecutionHistory history = createTwoCommandHistory();
     history.recordEvent(COMMAND_2, T4, T5, SUCCESS_CODE);
     assertThat(history.getStatus()).isEqualTo(HistoryStatus.NOT_ALL_RUN);
-    assertThat(history.getStatusTime()).isEqualTo(Optional.absent());
+    assertThat(history.getOldestStart()).isEqualTo(Optional.absent());
+    assertThat(history.getNewestFailure()).isEqualTo(Optional.absent());
   }
 
   @Test
@@ -55,7 +57,8 @@ public class ExecutionHistoryTest {
     history.recordEvent(COMMAND_1, T1, T2, FAILURE_CODE);
     history.recordEvent(COMMAND_2, T3, T4, SUCCESS_CODE);
     assertThat(history.getStatus()).isEqualTo(HistoryStatus.FAILED);
-    assertThat(history.getStatusTime()).isEqualTo(Optional.of(T2));
+    assertThat(history.getOldestStart()).isEqualTo(Optional.of(T1));
+    assertThat(history.getNewestFailure()).isEqualTo(Optional.of(T2));
   }
 
   @Test
@@ -65,7 +68,8 @@ public class ExecutionHistoryTest {
     history.recordEvent(COMMAND_2, T3, T4, SUCCESS_CODE);
     history.recordEvent(COMMAND_2, T2, T3, SUCCESS_CODE);
     assertThat(history.getStatus()).isEqualTo(HistoryStatus.ALL_PASSED);
-    assertThat(history.getStatusTime()).isEqualTo(Optional.of(T4));
+    assertThat(history.getOldestStart()).isEqualTo(Optional.of(T3));
+    assertThat(history.getNewestFailure()).isEqualTo(Optional.absent());
   }
  
   @Test
@@ -76,8 +80,9 @@ public class ExecutionHistoryTest {
           COMMAND_1, T1.plus(i, ChronoUnit.SECONDS), T2.plus(i, ChronoUnit.SECONDS), SUCCESS_CODE);
     }
     assertThat(history.getStatus()).isEqualTo(HistoryStatus.ALL_PASSED);
-    assertThat(history.getStatusTime())
-        .isEqualTo(Optional.of(T2.plus(ExecutionHistory.MAX_HISTORY_SIZE, ChronoUnit.SECONDS)));
+    assertThat(history.getOldestStart())
+        .isEqualTo(Optional.of(T1.plus(ExecutionHistory.MAX_HISTORY_SIZE, ChronoUnit.SECONDS)));
+    assertThat(history.getNewestFailure()).isEqualTo(Optional.absent());
   }
   
   @Test
@@ -96,7 +101,8 @@ public class ExecutionHistoryTest {
         "--status_file", configPath.toString(), "--command", COMMAND_2});
     ExecutionHistory restoredHistory = ExecutionHistory.from(restoredConfig);
     assertThat(restoredHistory.getStatus()).isEqualTo(HistoryStatus.ALL_PASSED);
-    assertThat(restoredHistory.getStatusTime()).isEqualTo(Optional.of(T4));
+    assertThat(restoredHistory.getOldestStart()).isEqualTo(Optional.of(T2));
+    assertThat(restoredHistory.getNewestFailure()).isEqualTo(Optional.absent());
   }
 
   private static ExecutionHistory createOneCommandHistory() {

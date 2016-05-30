@@ -32,6 +32,7 @@ public class ExecutionHistory implements Serializable {
   /** The maximum number of executions that are retained for each command. */
   @VisibleForTesting
   static final int MAX_HISTORY_SIZE = 10;
+
   /** Logger for the current class. */
   private static final Logger LOG = Logger.getLogger(ExecutionHistory.class.getCanonicalName());
 
@@ -50,8 +51,10 @@ public class ExecutionHistory implements Serializable {
   private ImmutableMap<String, Deque<CommandEvent>> historyMap;
   /** Cached calculated overall status */
   private HistoryStatus status;
-  /** Cached calculated time of status */
-  private Optional<Instant> statusTime;
+  /** Cached calculated time of oldest last-start */
+  private Optional<Instant> oldestStart;
+  /** Cached calculated time of most recent failure */
+  private Optional<Instant> newestFailure;
     
   /**
    * Constructs a new instance from the supplied status file and commands, attempting to initialize
@@ -173,19 +176,18 @@ public class ExecutionHistory implements Serializable {
   }
 
   /**
-   * Returns the time applicable to the status. For ALL_PASSED, returns the most oldest
-   * {@link Instant} at which any completed (i.e. the freshness age during success). For FAILED,
-   * returns the most recent {@link Instant} of a failed execution. For NOT_ALL_RUN, the
-   * time is absent.
+   * Returns the oldest {@link Instant} at which the most recent execution of any command started.
    */
-  public Optional<Instant> getStatusTime() {
-    // Note: This isn't ideal. A client must call both getStatus independently of getStatusTime
-    // in order to learn how to interpret the time, and there is the possibility for a race
-    // condition to change status between these calls. Unlikely to cause real world problems since
-    // the time is just for UI and state changes are rare, but could use a pair, or return a small
-    // class containing state and time, or have separate accessors for success and failure times 
-    // (probably like this last one best).
-    return statusTime;
+  public Optional<Instant> getOldestStart() {
+    return oldestStart;
+  }
+
+  /**
+   * Returns the most recent {@link Instant} of a failed execution, if any commands failed on their
+   * most recent execution, or absent otherwise.
+   */
+  public Optional<Instant> getNewestFailure() {
+    return newestFailure;
   }
 
   /**
@@ -193,7 +195,7 @@ public class ExecutionHistory implements Serializable {
    */
   private synchronized void recalculateSummaryState() {
     Instant newestFailure = Instant.MIN;
-    Instant oldestSuccess = Instant.MAX;
+    Instant oldestStart = Instant.MAX;
     status = HistoryStatus.ALL_PASSED;
     
     for (Deque<CommandEvent> commandHistory : historyMap.values()) {
@@ -203,11 +205,10 @@ public class ExecutionHistory implements Serializable {
         }
       } else {
         CommandEvent lastEvent = commandHistory.getLast();
-        if (lastEvent.isSuccessful()) {
-          if (lastEvent.getEnd().isBefore(oldestSuccess)) {
-            oldestSuccess = lastEvent.getEnd();
-          }
-        } else {
+        if (lastEvent.getStart().isBefore(oldestStart)) {
+          oldestStart = lastEvent.getStart();
+        }
+        if (!lastEvent.isSuccessful()) {
           status = HistoryStatus.FAILED;
           if (lastEvent.getEnd().isAfter(newestFailure)) {
             newestFailure = lastEvent.getEnd();
@@ -216,13 +217,10 @@ public class ExecutionHistory implements Serializable {
       }
     }
 
-    if (status == HistoryStatus.ALL_PASSED && oldestSuccess.isBefore(Instant.MAX)) {
-      statusTime = Optional.of(oldestSuccess);
-    } else if (status == HistoryStatus.FAILED && newestFailure.isAfter(Instant.MIN)) {
-      statusTime = Optional.of(newestFailure);
-    } else {
-      statusTime = Optional.absent();
-    }
+    this.oldestStart = status != HistoryStatus.NOT_ALL_RUN && oldestStart.isBefore(Instant.MAX)
+        ? Optional.of(oldestStart) : Optional.<Instant>absent();
+    this.newestFailure = newestFailure.isAfter(Instant.MIN)
+        ? Optional.of(newestFailure) : Optional.<Instant>absent();
   }
 
   /**
