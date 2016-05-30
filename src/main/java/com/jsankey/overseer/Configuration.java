@@ -2,6 +2,7 @@ package com.jsankey.overseer;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
@@ -19,6 +20,9 @@ import joptsimple.OptionSet;
  *
  */
 public class Configuration {
+
+  private static final String APP_NAME = "Overseer";
+  private static final String VERSION_STRING = "0.0.1";
 
   private static final OptionParser PARSER;
   private static final ArgumentAcceptingOptionSpec<String> SSID_SPEC;
@@ -63,7 +67,7 @@ public class Configuration {
   private final int runIntervalSec;
   private final ImmutableList<String> commands;
 
-  private Configuration(String[] arguments) throws OptionException {
+  private Configuration(String[] arguments) throws RuntimeException {
     OptionSet options = PARSER.parse(arguments);
     ssid = optionalFromOption(options, SSID_SPEC);
     logFile = optionalFromOption(options, LOG_FILE_SPEC);
@@ -86,7 +90,16 @@ public class Configuration {
   public static Configuration from(String[] arguments) throws OptionException {
     return new Configuration(arguments);
   }
-  
+   
+  /**
+   * Writes the program version information to a supplied {@link OutputStream}.
+   */
+  public static void printVersionOn(OutputStream sink) throws IOException {
+    OutputStreamWriter writer = new OutputStreamWriter(sink);
+    writer.write((String.format("%s version %s%n", APP_NAME, VERSION_STRING)));
+    writer.flush();
+  }
+
   /**
    * Writes the command line syntax to a supplied {@link OutputStream}.
    */
