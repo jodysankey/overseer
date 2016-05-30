@@ -15,6 +15,7 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.jsankey.overseer.ExecutionHistory.HistoryStatus;
 
+@SuppressWarnings("static-method")
 public class ExecutionHistoryTest {
   
   private static final String COMMAND_1 = "fake_command_one";
