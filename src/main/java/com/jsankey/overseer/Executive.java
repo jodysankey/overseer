@@ -2,6 +2,8 @@ package com.jsankey.overseer;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.logging.Logger;
 
@@ -26,9 +28,11 @@ public class Executive {
 
   private static final int SMALL_TIMEOUT_MILLIS = 250;
   private static final int MEDIUM_TIMEOUT_MILLIS = 2000;
-  
+  private static final DateTimeFormatter TIME_FMT =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+
   /** Logger for the current class. */
-  private static final Logger LOG = Logger.getLogger(ExecutionHistory.class.getCanonicalName());
+  private static final Logger LOG = Logger.getLogger(Executive.class.getCanonicalName());
 
   private final Configuration config;
   private final ImmutableList<CommandRunner> commands;
@@ -77,9 +81,7 @@ public class Executive {
    * @param config a {@link Configuration} used for initialization
    */
   public static Executive from(Configuration config) {
-    Executive executive = new Executive(config);
-    executive.start();
-    return executive;
+    return new Executive(config);
   }
 
   /**
@@ -128,14 +130,14 @@ public class Executive {
    * unless WiFi state currently prevents execution. 
    */
   public synchronized void runNow() {
-    LOG.info("Scheduling next start as current time on request");
+    LOG.info("Scheduling next start as current time by request");
     nextStart = this.clock.instant();
   }
 
   /**
    * Begins execution for the first time.
    */
-  private synchronized void start() {
+  public synchronized void start() {
     Preconditions.checkState(runnerThread == null, "Cannot start running executive");
     runnerThread = new Thread(this.new ExecutiveRunner());
     runnerThread.start();
@@ -189,8 +191,7 @@ public class Executive {
         Thread.sleep(MEDIUM_TIMEOUT_MILLIS);
       }
       synchronized (Executive.this) {
-        LOG.info(String.format(
-            "Current time %s is now after next start of %s", clock.instant(), nextStart));
+        LOG.info(String.format("Current time after next start of %s", TIME_FMT.format(nextStart)));
       }
     }
      
@@ -202,7 +203,7 @@ public class Executive {
         Optional<Instant> oldestStart = history.getOldestStart();
         if (oldestStart.isPresent()) {
           nextStart = oldestStart.get().plus(config.getRunIntervalSec(), ChronoUnit.SECONDS);
-          LOG.info("Scheduling next start for " + nextStart);
+          LOG.info(String.format("Scheduling next start for %s", TIME_FMT.format(nextStart)));
         } else {
           // By the time we're picking a time, the history will normally have a last execution,
           // but just in case of e.g. wifi failure, we fallback to current time.

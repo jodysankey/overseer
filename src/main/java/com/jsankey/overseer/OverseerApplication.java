@@ -1,6 +1,14 @@
 package com.jsankey.overseer;
 
 import java.io.IOException;
+import java.util.Enumeration;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler;
+import java.util.logging.Handler;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
+
+import com.jsankey.util.BriefTextFormatter;
 
 /**
  * Main class for executing the application. Most of the real work is delegated out to
@@ -26,7 +34,9 @@ public class OverseerApplication {
       return;
 	}
 
+    configureLogs(config);
     Executive exec = Executive.from(config);
+    exec.start();
     try {
       // The executive is running on its own thread. We can just sleep on this one
       while (!Thread.currentThread().isInterrupted()) {
@@ -36,5 +46,42 @@ public class OverseerApplication {
       Thread.currentThread().interrupt();
     }
     System.exit(INTERRUPTED_EXIT_CODE);
+  }
+
+  /**
+   * Configures the parent logger for application classes to write to file if specified by
+   * command line flag, or console if not.
+   */
+  private static void configureLogs(Configuration config) {
+    Logger appLogger = Logger.getLogger(OverseerApplication.class.getPackage().getName());
+
+    Handler handler = null;
+    if (config.getLogFile().isPresent()) {
+      try {
+        handler = new FileHandler(config.getLogFile().get());
+      } catch (SecurityException | IOException e) {
+        appLogger.warning("Could not log to the specified file, using console instead");
+      }
+    }
+    if (handler == null) {
+      handler = new ConsoleHandler();
+    }
+    handler.setFormatter(new BriefTextFormatter());
+    appLogger.setUseParentHandlers(false);
+    appLogger.addHandler(handler);
+  }
+
+  private static void dumpLogConfiguration() {
+    // TODO(jody): This was helpful for debug but should be deleted soon.
+    LogManager manager = LogManager.getLogManager();
+    Enumeration<String> loggerEnum = manager.getLoggerNames();
+    while (loggerEnum.hasMoreElements()) {
+      String loggerName = loggerEnum.nextElement();
+      Logger logger = manager.getLogger(loggerName);
+      System.out.println("LOG: " + loggerName);
+      for (Handler handler : logger.getHandlers()) {
+        System.out.println("  handler: " + handler.toString());
+      }
+    }
   }
 }

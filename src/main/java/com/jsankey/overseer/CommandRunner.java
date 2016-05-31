@@ -104,7 +104,7 @@ public class CommandRunner {
       LOG.info("Starting command: " + command);
       process = builder.start();
     } catch (IOException e) {
-      LOG.info("Command failed initialization: " + command);
+      LOG.warning("Command failed initialization: " + command);
       lastEvent = new CommandEvent(startTime, clock.instant(), CommandEvent.COULD_NOT_START);
       process = null;
     }
@@ -116,7 +116,7 @@ public class CommandRunner {
   public synchronized void terminate() {
     if (process !=null) {
       process.destroy();
-      LOG.info("Terminating command: " + command);
+      LOG.warning("Terminating command: " + command);
       lastEvent = new CommandEvent(startTime, clock.instant(), CommandEvent.ENFORCED_TERMINATION);
       process = null;
     }
@@ -136,8 +136,15 @@ public class CommandRunner {
         // If we didn't throw an exception the command must now be finished
         lastEvent = new CommandEvent(startTime, clock.instant(), exitCode);
         process = null;
-        LOG.info(String.format("Detected completion of command: %s (%.2f seconds)",
-            command, lastEvent.getDurationMillis()/1000f));
+        if (lastEvent.isSuccessful()) {
+          LOG.info(String.format(
+              "Detected completion of command: %s (%.2f sec)",
+              command, lastEvent.getDurationMillis()/1000f));
+        } else {
+          LOG.warning(String.format(
+              "Detected failure of command with exit code %d: %s (%.2f sec)",
+              lastEvent.getExitCode(), command, lastEvent.getDurationMillis()/1000f));
+        }
       } catch (IllegalThreadStateException e) {
         // Normal that if the process is not done yet we receive this Exception.
         return true;
