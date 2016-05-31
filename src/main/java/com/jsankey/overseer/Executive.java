@@ -166,6 +166,7 @@ public class Executive {
     @Override
     public void run() {
       try {
+        setNextStart();
         while (!Thread.currentThread().isInterrupted()) {
           waitUntilNextStart();
           runCommandSet();
@@ -206,7 +207,7 @@ public class Executive {
           LOG.info(String.format("Scheduling next start for %s", TIME_FMT.format(nextStart)));
         } else {
           // By the time we're picking a time, the history will normally have a last execution,
-          // but just in case of e.g. wifi failure, we fallback to current time.
+          // but just in case of e.g. wifi failure we fallback to current time.
           nextStart = clock.instant();
           LOG.warning("Scheduling next start as current time - no previous completion found");
         }
