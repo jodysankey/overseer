@@ -71,18 +71,4 @@ public class OverseerApplication {
     appLogger.setUseParentHandlers(false);
     appLogger.addHandler(handler);
   }
-
-  private static void dumpLogConfiguration() {
-    // TODO(jody): This was helpful for debug but should be deleted soon.
-    LogManager manager = LogManager.getLogManager();
-    Enumeration<String> loggerEnum = manager.getLoggerNames();
-    while (loggerEnum.hasMoreElements()) {
-      String loggerName = loggerEnum.nextElement();
-      Logger logger = manager.getLogger(loggerName);
-      System.out.println("LOG: " + loggerName);
-      for (Handler handler : logger.getHandlers()) {
-        System.out.println("  handler: " + handler.toString());
-      }
-    }
-  }
 }
