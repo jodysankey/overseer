@@ -26,8 +26,10 @@ import com.jsankey.overseer.ExecutionHistory.HistoryStatus;
  */
 public class Executive {
 
-  private static final int SMALL_TIMEOUT_MILLIS = 250;
-  private static final int MEDIUM_TIMEOUT_MILLIS = 2000;
+  private static final int COMMAND_COMPLETION_CHECK_MILLIS = 250;
+  private static final int MANUAL_REQUEST_CHECK_MILLIS = 2000;
+  private static final int WIFI_STATUS_CHECK_MILLIS = 60000;
+
   private static final DateTimeFormatter TIME_FMT =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
@@ -38,11 +40,14 @@ public class Executive {
   private final ImmutableList<CommandRunner> commands;
   private final ExecutionHistory history;
   private final Clock clock;
-  
+
   private @Nullable Thread runnerThread;
   private @Nullable CommandRunner activeCommand;
-  private Instant nextStart;
-  
+  private @Nullable WifiStatusChecker wifiStatus;
+  private Instant automaticRunTime;
+  private Instant manualRunTime;
+  private boolean blockedOnWifi;
+
   public enum Status {
     /** A command is currently being executed */
     RUNNING,
@@ -65,14 +70,17 @@ public class Executive {
     this.config = config;
     this.history = ExecutionHistory.from(config);
     this.clock = Clock.systemUTC();
-    
+    this.wifiStatus =
+        config.getSsid().isPresent() ? WifiStatusChecker.of(config.getSsid().get()) : null;
+    this.blockedOnWifi = false;
+
     ImmutableList.Builder<CommandRunner> runnerBuilder = ImmutableList.builder();
     for (String command : config.getCommands()) {
       runnerBuilder.add(CommandRunner.forCommand(command));
     }
     this.commands = runnerBuilder.build();
-    
-    this.nextStart = clock.instant();
+
+    scheduleAutomaticRun();
   }
 
   /**
@@ -97,13 +105,15 @@ public class Executive {
   public ExecutionHistory getHistory() {
     return history;
   }
-  
+
   /**
    * Returns the overall status of execution.
    */
   public synchronized Status getStatus() {
     if (runnerThread == null) {
       return Status.TERMINATED;
+    } else if (blockedOnWifi) {
+      return Status.BLOCKED_ON_WIFI;
     } else if (activeCommand != null) {
       return Status.RUNNING;
     } else if (history.getStatus() == HistoryStatus.FAILED) {
@@ -113,7 +123,7 @@ public class Executive {
       //TODO: Blocked on Wifi
     }
   }
-  
+
   /**
    * Returns the command that is currently running, if any.
    */
@@ -130,19 +140,19 @@ public class Executive {
    * unless WiFi state currently prevents execution. 
    */
   public synchronized void runNow() {
-    LOG.info("Scheduling next start as current time by request");
-    nextStart = this.clock.instant();
+    LOG.info("Scheduling manual start at current time");
+    manualRunTime = this.clock.instant();
   }
 
   /**
    * Begins execution for the first time.
    */
-  public synchronized void start() {
+  public synchronized void begin() {
     Preconditions.checkState(runnerThread == null, "Cannot start running executive");
     runnerThread = new Thread(this.new ExecutiveRunner());
     runnerThread.start();
   }
- 
+
   /**
    * Terminates any currently executing command immediately, killing the thread, releasing
    * resources, and preventing any further interaction with the object.
@@ -154,10 +164,28 @@ public class Executive {
     // thread via an atomically set reference, and don't want to deadlock.
     runnerThread.interrupt();
     while (runnerThread != null) {
-      Thread.sleep(SMALL_TIMEOUT_MILLIS);
+      Thread.sleep(COMMAND_COMPLETION_CHECK_MILLIS);
     }
   }
-  
+
+  /**
+   * Sets an appropriate next automatic run time given the current command history, clearing any
+   * previous manual run request.
+   */
+  private synchronized void scheduleAutomaticRun() {
+    Optional<Instant> oldestStart = history.getOldestStart();
+    if (oldestStart.isPresent()) {
+      automaticRunTime = oldestStart.get().plus(config.getRunIntervalSec(), ChronoUnit.SECONDS);
+      LOG.info(String.format("Scheduling next start for %s", TIME_FMT.format(automaticRunTime)));
+    } else {
+      // The history will normally have a last execution, but in case it doesn't (e.g. first run)
+      // we fallback to current time.
+      automaticRunTime = clock.instant();
+      LOG.warning("Scheduling next start as current time - no previous completion found");
+    }
+    manualRunTime = Instant.MAX;
+  }
+
   /**
    * Inner class to handle the actual execution on a dedicated thread.
    */
@@ -166,11 +194,10 @@ public class Executive {
     @Override
     public void run() {
       try {
-        setNextStart();
         while (!Thread.currentThread().isInterrupted()) {
-          waitUntilNextStart();
+          waitUntilNextRun();
           runCommandSet();
-          setNextStart();
+          scheduleAutomaticRun();
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -178,51 +205,15 @@ public class Executive {
       //Communicate back to the parent that we stopped by clearing its reference.
       runnerThread = null;
     }
-     
-    /**
-     * Waits until at least next start time.
-     */
-    private void waitUntilNextStart() throws InterruptedException {
-      // Note: The nextStart time may move forwards by a manual start request, hence do frequent
-      // checks rather than one big long sleep to the correct time.
-      while (clock.instant().isBefore(nextStart)) {
-        if (Thread.currentThread().isInterrupted()) {
-          return;
-        }
-        Thread.sleep(MEDIUM_TIMEOUT_MILLIS);
-      }
-      synchronized (Executive.this) {
-        LOG.info(String.format("Current time after next start of %s", TIME_FMT.format(nextStart)));
-      }
-    }
-     
-    /**
-     * Sets an appropriate next start time given the current command history.
-     */
-    private void setNextStart() {
-      synchronized(Executive.this) {
-        Optional<Instant> oldestStart = history.getOldestStart();
-        if (oldestStart.isPresent()) {
-          nextStart = oldestStart.get().plus(config.getRunIntervalSec(), ChronoUnit.SECONDS);
-          LOG.info(String.format("Scheduling next start for %s", TIME_FMT.format(nextStart)));
-        } else {
-          // By the time we're picking a time, the history will normally have a last execution,
-          // but just in case of e.g. wifi failure we fallback to current time.
-          nextStart = clock.instant();
-          LOG.warning("Scheduling next start as current time - no previous completion found");
-        }
-      }
-    }
 
     /**
-     * Runs all commands in order, waiting until execution is complete. And gating on the
-     * availability of wifi before starting each.
+     * Runs all commands in order, waiting until execution is complete and gating
+     * on the availability of wifi before starting each.
      */
     private void runCommandSet() throws InterruptedException {
       try {
         for (CommandRunner command : commands) {
-          // TODO(jody): Wifi check
-          activeCommand = command;
+          waitUntilWifi();
           runCommand(command);
         }
       } finally {
@@ -235,19 +226,70 @@ public class Executive {
      * upon interruption.
      */
     private void runCommand(CommandRunner command) throws InterruptedException {
-      command.start();
-      try {
-        while (command.isRunning()) {
-          if (Thread.currentThread().isInterrupted()) {
-            throw new InterruptedException();
+      if (!Thread.currentThread().isInterrupted()) {
+        try {
+          activeCommand = command;
+          command.start();
+          while (command.isRunning() && !Thread.currentThread().isInterrupted()) {
+            Thread.sleep(COMMAND_COMPLETION_CHECK_MILLIS);
           }
-          Thread.sleep(SMALL_TIMEOUT_MILLIS);
+        } finally {
+          command.terminate();
+          history.recordEvent(command.getCommand(), command.getLastExecution());
+          activeCommand = null;
         }
-        history.recordEvent(command.getCommand(), command.getLastExecution());
-      } catch (InterruptedException e) {
-        command.terminate();
-        history.recordEvent(command.getCommand(), command.getLastExecution());
-        throw e;
+      }
+    }
+
+    /**
+     * Waits until the next scheduled or manually requested run time.
+     */
+    private void waitUntilNextRun() throws InterruptedException {
+      while (!Thread.currentThread().isInterrupted()) {
+        Instant now = clock.instant();
+        if (now.isAfter(manualRunTime)) {
+          LOG.info(String.format(
+              "Current time after manual start of %s", TIME_FMT.format(manualRunTime)));
+          break;
+        } else if (now.isAfter(automaticRunTime)) {
+          LOG.info(String.format(
+              "Current time after automatic start of %s", TIME_FMT.format(automaticRunTime)));
+          break;
+        }
+        Thread.sleep(MANUAL_REQUEST_CHECK_MILLIS);
+      }
+    }
+
+    /**
+     * Waits until the specified wifi SSID is connected, or returns immediately if
+     * no wifi SSID was specified.
+     */
+    private void waitUntilWifi() throws InterruptedException {
+      // Try the initial run without any logging or fallback.
+      if (wifiStatus == null || wifiStatus.connected()) {
+        return;
+      }
+
+      // After the initial, only check after a time delay or a manual run request;
+      // the wifi checker is quite expensive.
+      try {
+        LOG.info(String.format("Waiting for wifi SSID: %s", wifiStatus.getTargetSsid()));
+        Instant nextCheckTime = clock.instant().plus(WIFI_STATUS_CHECK_MILLIS, ChronoUnit.MILLIS);
+        Instant cachedManualRunTime = manualRunTime;
+        blockedOnWifi = true;
+        while (!Thread.currentThread().isInterrupted()) {
+          if (clock.instant().isAfter(nextCheckTime) || manualRunTime != cachedManualRunTime) {
+            if (wifiStatus.connected()) {
+              LOG.info(String.format("Now connected to wifi SSID: %s", wifiStatus.getTargetSsid()));
+              return;
+            } else {
+              nextCheckTime = clock.instant().plus(WIFI_STATUS_CHECK_MILLIS, ChronoUnit.MILLIS);
+              cachedManualRunTime = manualRunTime;
+            }
+          }
+        }
+      } finally {
+        blockedOnWifi = false;
       }
     }
   }

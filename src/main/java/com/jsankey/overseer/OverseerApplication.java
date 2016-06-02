@@ -18,6 +18,7 @@ import com.jsankey.util.BriefTextFormatter;
 public class OverseerApplication {
   private static final int PARSE_ERROR_EXIT_CODE = 2;
   private static final int INTERRUPTED_EXIT_CODE = 3;
+  private static final int LONG_TIMEOUT_MILLIS = 15 * 60 * 1000;
 
   public static void main(String[] args) throws IOException {
     Configuration config;
@@ -36,11 +37,11 @@ public class OverseerApplication {
 
     configureLogs(config);
     Executive exec = Executive.from(config);
-    exec.start();
+    exec.begin();
     try {
       // The executive is running on its own thread. We can just sleep on this one
       while (!Thread.currentThread().isInterrupted()) {
-        Thread.sleep(60000);
+        Thread.sleep(LONG_TIMEOUT_MILLIS);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
