@@ -11,6 +11,7 @@ import joptsimple.ArgumentAcceptingOptionSpec;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
 
 /**
  * Defines a configuration for the application, and creates this configuration
@@ -28,10 +29,10 @@ public class Configuration {
   private static final ArgumentAcceptingOptionSpec<String> SSID_SPEC;
   private static final ArgumentAcceptingOptionSpec<String> LOG_FILE_SPEC;
   private static final ArgumentAcceptingOptionSpec<String> STATUS_FILE_SPEC;
-  private static final ArgumentAcceptingOptionSpec<Integer> CHECK_INTERVAL_SPEC;
   private static final ArgumentAcceptingOptionSpec<Integer> RUN_INTERVAL_SPEC;
   private static final ArgumentAcceptingOptionSpec<String> COMMAND_SPEC;
-  
+  private static final OptionSpec<Void> DISABLE_DBUS_SPEC;
+
   static {
     PARSER = new OptionParser();
     SSID_SPEC = PARSER
@@ -44,12 +45,6 @@ public class Configuration {
         .accepts("status_file", "Optional file to cache and restore command execution status, "
             + "last run times and states to be maintained through power cycles.")
         .withRequiredArg();
-    CHECK_INTERVAL_SPEC = PARSER
-        .accepts("check_interval",
-            "Minimum time between checks for execution eligibility, in seconds.")
-        .withRequiredArg()
-        .ofType(Integer.class)
-        .defaultsTo(30);
     RUN_INTERVAL_SPEC = PARSER
         .accepts("run_interval", "Minimum time between attempted command executions, in seconds.")
         .withRequiredArg()
@@ -58,22 +53,24 @@ public class Configuration {
     COMMAND_SPEC = PARSER
         .accepts("command", "Command to be executed periodically. May be specified multiple times.")
         .withRequiredArg();
+    DISABLE_DBUS_SPEC = PARSER
+        .accepts("disable_dbus", "Disables the DBus integration capability.");
   }
-  
+
   private final Optional<String> ssid;
   private final Optional<String> logFile;
   private final Optional<String> statusFile;
-  private final int checkIntervalSec;
   private final int runIntervalSec;
   private final ImmutableList<String> commands;
+  private final boolean enableDbus;
 
   private Configuration(String[] arguments) throws RuntimeException {
     OptionSet options = PARSER.parse(arguments);
     ssid = optionalFromOption(options, SSID_SPEC);
     logFile = optionalFromOption(options, LOG_FILE_SPEC);
     statusFile = optionalFromOption(options, STATUS_FILE_SPEC);
-    checkIntervalSec = options.valueOf(CHECK_INTERVAL_SPEC);
     runIntervalSec = options.valueOf(RUN_INTERVAL_SPEC);
+    enableDbus = !options.has(DISABLE_DBUS_SPEC);
     commands = ImmutableList.copyOf(options.valuesOf(COMMAND_SPEC));
     // Would be much better to either make command globally required (can't because no API) or
     // construct an OptionException directly (can't because constructor is package private).
@@ -81,7 +78,7 @@ public class Configuration {
       throw new RuntimeException("At least one --command option must be supplied");
     }
   }
-  
+
   /**
    * Construct a new {@link Configuration} from a command line argument array.
    * 
@@ -90,7 +87,7 @@ public class Configuration {
   public static Configuration from(String[] arguments) throws OptionException {
     return new Configuration(arguments);
   }
-   
+
   /**
    * Writes the program version information to a supplied {@link OutputStream}.
    */
@@ -129,13 +126,6 @@ public class Configuration {
   }
 
   /**
-   * Returns the minimum time between checks for execution eligibility, in seconds.
-   */
-  public int getCheckIntervalSec() {
-    return checkIntervalSec;
-  }
-
-  /**
    * Returns the minimum time between attempted command executions, in seconds.
    */
   public int getRunIntervalSec() {
@@ -147,6 +137,13 @@ public class Configuration {
    */
   public ImmutableList<String> getCommands() {
     return commands;
+  }
+
+  /**
+   * Returns true iff the dbus integration should be enabled.
+   */
+  public boolean getDbusEnabled() {
+    return enableDbus;
   }
 
   /**

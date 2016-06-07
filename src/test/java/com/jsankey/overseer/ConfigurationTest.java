@@ -24,7 +24,6 @@ public class ConfigurationTest {
   private static final String TEST_SSID = "theNeighborsWifi";
   private static final String TEST_LOG_FILE = "/var/log/test_output_here";
   private static final String TEST_STATUS_FILE = "/home/user/.overseer";
-  private static final int TEST_CHECK_INTERVAL = 999;
   private static final int TEST_RUN_INTERVAL = 888;
   private static final String COMMAND_1 = "run something --with flag";
   private static final String COMMAND_2 = "log anotherthing now";
@@ -35,16 +34,16 @@ public class ConfigurationTest {
         "--ssid", TEST_SSID,
         "--log_file", TEST_LOG_FILE,
         "--status_file", TEST_STATUS_FILE,
-        "--check_interval", String.valueOf(TEST_CHECK_INTERVAL),
         "--run_interval", String.valueOf(TEST_RUN_INTERVAL),
+        "--disable_dbus",
         "--command", COMMAND_1,
         "--command", COMMAND_2});
     assertThat(config.getSsid()).isEqualTo(Optional.of(TEST_SSID));
     assertThat(config.getLogFile()).isEqualTo(Optional.of(TEST_LOG_FILE));
     assertThat(config.getStatusFile()).isEqualTo(Optional.of(TEST_STATUS_FILE));
-    assertThat(config.getCheckIntervalSec()).isEqualTo(TEST_CHECK_INTERVAL);
     assertThat(config.getRunIntervalSec()).isEqualTo(TEST_RUN_INTERVAL);
     assertThat(config.getCommands()).isEqualTo(ImmutableList.of(COMMAND_1, COMMAND_2));
+    assertThat(config.getDbusEnabled()).isFalse();
   }
 
   @Test
@@ -53,9 +52,9 @@ public class ConfigurationTest {
     assertThat(config.getSsid()).isEqualTo(Optional.<String>absent());
     assertThat(config.getLogFile()).isEqualTo(Optional.<String>absent());
     assertThat(config.getStatusFile()).isEqualTo(Optional.<String>absent());
-    assertThat(config.getCheckIntervalSec()).isEqualTo(30/* Default */);
     assertThat(config.getRunIntervalSec()).isEqualTo(300/* Default */);
     assertThat(config.getCommands()).isEqualTo(ImmutableList.of(COMMAND_1));
+    assertThat(config.getDbusEnabled()).isTrue();
   }
 
   @Test
@@ -86,19 +85,18 @@ public class ConfigurationTest {
     } catch (RuntimeException e){
       // Expected
     }
-   
   }
 
   @Test
   public void testHelpOutput() throws IOException {
     OutputStream mockStream = mock(OutputStream.class);
     ArgumentCaptor<byte[]> writtenHelp = ArgumentCaptor.forClass(byte[].class);
-    
+
     Configuration.printHelpOn(mockStream);
 
     verify(mockStream).write(writtenHelp.capture(), anyInt(), anyInt());
     String actual = new String(writtenHelp.getValue());
-    assertThat(actual).contains("--check_interval <Integer>");
+    assertThat(actual).contains("--run_interval <Integer>");
     assertThat(actual).contains("Optional file to cache and restore command");
   }
  

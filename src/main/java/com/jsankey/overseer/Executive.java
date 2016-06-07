@@ -36,7 +36,7 @@ public class Executive {
   /** Logger for the current class. */
   private static final Logger LOG = Logger.getLogger(Executive.class.getCanonicalName());
 
-  private final Configuration config;
+  private final int runIntervalSec;
   private final ImmutableList<CommandRunner> commands;
   private final ExecutionHistory history;
   private final Clock clock;
@@ -67,8 +67,8 @@ public class Executive {
    * @param config a {@link Configuration} used for initialization
    */
   private Executive(Configuration config) {
-    this.config = config;
     this.history = ExecutionHistory.from(config);
+    this.runIntervalSec = config.getRunIntervalSec();
     this.clock = Clock.systemUTC();
     this.wifiStatus =
         config.getSsid().isPresent() ? WifiStatusChecker.of(config.getSsid().get()) : null;
@@ -90,13 +90,6 @@ public class Executive {
    */
   public static Executive from(Configuration config) {
     return new Executive(config);
-  }
-
-  /**
-   * Returns the {@link Configuration} this object was constructed for.
-   */
-  public Configuration getConfig() {
-    return config;
   }
 
   /**
@@ -175,7 +168,7 @@ public class Executive {
   private synchronized void scheduleAutomaticRun() {
     Optional<Instant> oldestStart = history.getOldestStart();
     if (oldestStart.isPresent()) {
-      automaticRunTime = oldestStart.get().plus(config.getRunIntervalSec(), ChronoUnit.SECONDS);
+      automaticRunTime = oldestStart.get().plus(runIntervalSec, ChronoUnit.SECONDS);
       LOG.info(String.format("Scheduling next start for %s", TIME_FMT.format(automaticRunTime)));
     } else {
       // The history will normally have a last execution, but in case it doesn't (e.g. first run)

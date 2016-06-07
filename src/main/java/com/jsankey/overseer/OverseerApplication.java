@@ -1,11 +1,9 @@
 package com.jsankey.overseer;
 
 import java.io.IOException;
-import java.util.Enumeration;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
-import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 import com.jsankey.util.BriefTextFormatter;
