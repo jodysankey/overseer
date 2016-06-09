@@ -51,6 +51,7 @@ jar {
 task jarBundle(type: OneJar) {
   archiveName = 'OverseerBundle.jar'
   mainClass = 'com.jsankey.overseer.OverseerApplication'
+  additionalDir = new File(rootDir.absolutePath, 'res')
   // Adding a group marks the task as public for display in BuildShip
   group = 'OneJar'
 }
