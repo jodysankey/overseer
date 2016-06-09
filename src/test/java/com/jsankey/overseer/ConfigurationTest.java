@@ -44,6 +44,8 @@ public class ConfigurationTest {
     assertThat(config.getRunIntervalSec()).isEqualTo(TEST_RUN_INTERVAL);
     assertThat(config.getCommands()).isEqualTo(ImmutableList.of(COMMAND_1, COMMAND_2));
     assertThat(config.getDbusEnabled()).isFalse();
+    assertThat(config.isHelpRequested()).isFalse();
+    assertThat(config.isVersionRequested()).isFalse();
   }
 
   @Test
@@ -55,6 +57,8 @@ public class ConfigurationTest {
     assertThat(config.getRunIntervalSec()).isEqualTo(300/* Default */);
     assertThat(config.getCommands()).isEqualTo(ImmutableList.of(COMMAND_1));
     assertThat(config.getDbusEnabled()).isTrue();
+    assertThat(config.isHelpRequested()).isFalse();
+    assertThat(config.isVersionRequested()).isFalse();
   }
 
   @Test
@@ -88,6 +92,20 @@ public class ConfigurationTest {
   }
 
   @Test
+  public void testHelp() {
+     Configuration config = Configuration.from(new String[]{"--help"});
+    assertThat(config.isHelpRequested()).isTrue();
+    assertThat(config.isVersionRequested()).isFalse();
+  }
+
+  @Test
+  public void testVersion() {
+     Configuration config = Configuration.from(new String[]{"--version"});
+    assertThat(config.isHelpRequested()).isFalse();
+    assertThat(config.isVersionRequested()).isTrue();
+  }
+
+  @Test
   public void testHelpOutput() throws IOException {
     OutputStream mockStream = mock(OutputStream.class);
     ArgumentCaptor<byte[]> writtenHelp = ArgumentCaptor.forClass(byte[].class);
@@ -99,5 +117,17 @@ public class ConfigurationTest {
     assertThat(actual).contains("--run_interval <Integer>");
     assertThat(actual).contains("Optional file to cache and restore command");
   }
- 
+
+  @Test
+  public void testVersionOutput() throws IOException {
+    OutputStream mockStream = mock(OutputStream.class);
+    ArgumentCaptor<byte[]> writtenVersion = ArgumentCaptor.forClass(byte[].class);
+
+    Configuration.printVersionOn(mockStream);
+
+    verify(mockStream).write(writtenVersion.capture(), anyInt(), anyInt());
+    String actual = new String(writtenVersion.getValue());
+    assertThat(actual).contains(Configuration.APP_NAME);
+    assertThat(actual).contains(Configuration.VERSION_STRING);
+  }
 }

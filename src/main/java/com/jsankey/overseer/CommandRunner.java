@@ -49,7 +49,7 @@ public class CommandRunner {
         .redirectInput(DEVNULL)
         .redirectOutput(DEVNULL)
         .redirectError(DEVNULL);
-        
+
     this.builder = builder;
     this.process = null;
     this.startTime = null;

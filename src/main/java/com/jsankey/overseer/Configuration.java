@@ -18,20 +18,22 @@ import joptsimple.OptionSpec;
  * from command line options.
  * 
  * @author Jody
- *
  */
 public class Configuration {
 
-  private static final String APP_NAME = "Overseer";
-  private static final String VERSION_STRING = "0.0.1";
+  public static final String APP_NAME = "Overseer";
+  public static final String VERSION_STRING = "0.0.1";
 
+  // Statics for the parser and each of its component spec elements.
   private static final OptionParser PARSER;
   private static final ArgumentAcceptingOptionSpec<String> SSID_SPEC;
   private static final ArgumentAcceptingOptionSpec<String> LOG_FILE_SPEC;
   private static final ArgumentAcceptingOptionSpec<String> STATUS_FILE_SPEC;
   private static final ArgumentAcceptingOptionSpec<Integer> RUN_INTERVAL_SPEC;
-  private static final ArgumentAcceptingOptionSpec<String> COMMAND_SPEC;
   private static final OptionSpec<Void> DISABLE_DBUS_SPEC;
+  private static final OptionSpec<Void> HELP_SPEC;
+  private static final OptionSpec<Void> VERSION_SPEC;
+  private static final ArgumentAcceptingOptionSpec<String> COMMAND_SPEC;
 
   static {
     PARSER = new OptionParser();
@@ -50,19 +52,29 @@ public class Configuration {
         .withRequiredArg()
         .ofType(Integer.class)
         .defaultsTo(300);
-    COMMAND_SPEC = PARSER
-        .accepts("command", "Command to be executed periodically. May be specified multiple times.")
-        .withRequiredArg();
     DISABLE_DBUS_SPEC = PARSER
         .accepts("disable_dbus", "Disables the DBus integration capability.");
+    HELP_SPEC = PARSER
+        .accepts("help", "Prints this help string.")
+        .forHelp();
+    VERSION_SPEC = PARSER
+        .accepts("version", "Prints version information.")
+        .forHelp();
+    COMMAND_SPEC = PARSER
+        .accepts("command", "Command to be executed periodically. May be specified multiple times.")
+        .requiredUnless(HELP_SPEC, VERSION_SPEC)
+        .withRequiredArg();
   }
 
+  // Instance members store the results of parsing a particular input. 
   private final Optional<String> ssid;
   private final Optional<String> logFile;
   private final Optional<String> statusFile;
   private final int runIntervalSec;
   private final ImmutableList<String> commands;
   private final boolean enableDbus;
+  private final boolean helpRequested;
+  private final boolean versionRequested;
 
   private Configuration(String[] arguments) throws RuntimeException {
     OptionSet options = PARSER.parse(arguments);
@@ -71,12 +83,9 @@ public class Configuration {
     statusFile = optionalFromOption(options, STATUS_FILE_SPEC);
     runIntervalSec = options.valueOf(RUN_INTERVAL_SPEC);
     enableDbus = !options.has(DISABLE_DBUS_SPEC);
+    helpRequested = options.has(HELP_SPEC);
+    versionRequested = options.has(VERSION_SPEC);
     commands = ImmutableList.copyOf(options.valuesOf(COMMAND_SPEC));
-    // Would be much better to either make command globally required (can't because no API) or
-    // construct an OptionException directly (can't because constructor is package private).
-    if (commands.isEmpty()) {
-      throw new RuntimeException("At least one --command option must be supplied");
-    }
   }
 
   /**
@@ -93,7 +102,7 @@ public class Configuration {
    */
   public static void printVersionOn(OutputStream sink) throws IOException {
     OutputStreamWriter writer = new OutputStreamWriter(sink);
-    writer.write((String.format("%s version %s%n", APP_NAME, VERSION_STRING)));
+    writer.write((String.format("  %s version %s%n", APP_NAME, VERSION_STRING)));
     writer.flush();
   }
 
@@ -144,6 +153,20 @@ public class Configuration {
    */
   public boolean getDbusEnabled() {
     return enableDbus;
+  }
+
+  /**
+   * Returns true iff the help string has been requested.
+   */
+  public boolean isHelpRequested() {
+    return helpRequested;
+  }
+
+  /**
+   * Returns true iff the version string has been requested.
+   */
+  public boolean isVersionRequested() {
+    return versionRequested;
   }
 
   /**

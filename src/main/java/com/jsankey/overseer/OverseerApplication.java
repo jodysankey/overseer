@@ -8,43 +8,50 @@ import java.util.logging.Logger;
 
 import com.jsankey.util.BriefTextFormatter;
 
+import joptsimple.OptionException;
+
 /**
  * Main class for executing the application. Most of the real work is delegated out to
  * {@link Configuration} for parsing command line options and {@link Executive} for scheduling
  * and performing the command execution.
  */
 public class OverseerApplication {
+  private static final int SUCCESS_EXIT_CODE = 0;
   private static final int PARSE_ERROR_EXIT_CODE = 2;
   private static final int INTERRUPTED_EXIT_CODE = 3;
   private static final int LONG_TIMEOUT_MILLIS = 15 * 60 * 1000;
 
   public static void main(String[] args) throws IOException {
-    Configuration config;
-    try {
-      config = Configuration.from(args);
-    } catch (RuntimeException e) {
-      // TODO(jody): Doesn't add functionality but should really use a non-error situation
-      // for help and version information.
-      Configuration.printVersionOn(System.out);
-      System.out.print(String.format("%nError reading command line options%n%s%n", e.toString()));
-      Configuration.printHelpOn(System.out);
-      System.exit(PARSE_ERROR_EXIT_CODE);
-      // Explicit return helps static analysis determine state of config
-      return;
-	}
-
+    Configuration config = parseConfiguration(args);
     configureLogs(config);
     Executive exec = Executive.from(config);
     exec.begin();
+    // The executive is running on its own thread. We can just sleep on this one.
+    waitIndefinitely();
+  }
+
+  /**
+   * Returns a configuration from the supplied configuration options, outputting the 
+   * help or version information when appropriate, and exiting gracefully on failure.
+   */
+  private static Configuration parseConfiguration(String[] args) throws IOException {
+    Configuration config = null;
     try {
-      // The executive is running on its own thread. We can just sleep on this one
-      while (!Thread.currentThread().isInterrupted()) {
-        Thread.sleep(LONG_TIMEOUT_MILLIS);
+      config = Configuration.from(args);
+      if (config.isHelpRequested()) {
+        Configuration.printHelpOn(System.out);
+        System.exit(SUCCESS_EXIT_CODE);
+      } else if (config.isVersionRequested()) {
+        Configuration.printVersionOn(System.out);
+        System.exit(SUCCESS_EXIT_CODE);
       }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
-    System.exit(INTERRUPTED_EXIT_CODE);
+    } catch (OptionException e) {
+      System.out.println(String.format("%nError reading command line options:"));
+      System.out.println(String.format("  %s%n", e.toString()));
+      Configuration.printHelpOn(System.out);
+      System.exit(PARSE_ERROR_EXIT_CODE);
+	}
+    return config;
   }
 
   /**
@@ -68,5 +75,19 @@ public class OverseerApplication {
     handler.setFormatter(new BriefTextFormatter());
     appLogger.setUseParentHandlers(false);
     appLogger.addHandler(handler);
+  }
+
+  /**
+   * Waits forever without consuming much CPU and exits gracefully if an interrupt occurs.
+   */
+  private static void waitIndefinitely() {
+    try {
+      while (!Thread.currentThread().isInterrupted()) {
+        Thread.sleep(LONG_TIMEOUT_MILLIS);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    System.exit(INTERRUPTED_EXIT_CODE);
   }
 }
