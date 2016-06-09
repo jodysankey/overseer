@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.annotation.Nullable;
@@ -194,6 +195,8 @@ public class Executive {
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+      } catch (Exception e) {
+        LOG.log(Level.SEVERE, "Fatal exception", e);
       }
       //Communicate back to the parent that we stopped by clearing its reference.
       runnerThread = null;
