@@ -57,7 +57,7 @@ public class OverseerApplication {
     Handler handler = null;
     if (config.getLogFile().isPresent()) {
       try {
-        handler = new FileHandler(config.getLogFile().get());
+        handler = new FileHandler(config.getLogFile().get(), true /* append mode */);
       } catch (SecurityException | IOException e) {
         appLogger.warning("Could not log to the specified file, using console instead");
       }
