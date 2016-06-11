@@ -22,13 +22,14 @@ import joptsimple.OptionSpec;
 public class Configuration {
 
   public static final String APP_NAME = "Overseer";
-  public static final String VERSION_STRING = "0.0.1";
+  public static final String VERSION_STRING = "0.0.2";
 
   // Statics for the parser and each of its component spec elements.
   private static final OptionParser PARSER;
   private static final ArgumentAcceptingOptionSpec<String> SSID_SPEC;
   private static final ArgumentAcceptingOptionSpec<String> LOG_FILE_SPEC;
   private static final ArgumentAcceptingOptionSpec<String> STATUS_FILE_SPEC;
+  private static final ArgumentAcceptingOptionSpec<Integer> SOCKET_SPEC;
   private static final ArgumentAcceptingOptionSpec<Integer> RUN_INTERVAL_SPEC;
   private static final OptionSpec<Void> DISABLE_DBUS_SPEC;
   private static final OptionSpec<Void> HELP_SPEC;
@@ -64,12 +65,17 @@ public class Configuration {
         .accepts("command", "Command to be executed periodically. May be specified multiple times.")
         .requiredUnless(HELP_SPEC, VERSION_SPEC)
         .withRequiredArg();
+    SOCKET_SPEC = PARSER
+        .accepts("socket", "Socket to listen for interactive commands.")
+        .withRequiredArg()
+        .ofType(Integer.class);
   }
 
   // Instance members store the results of parsing a particular input. 
   private final Optional<String> ssid;
   private final Optional<String> logFile;
   private final Optional<String> statusFile;
+  private final Optional<Integer> socket;
   private final int runIntervalSec;
   private final ImmutableList<String> commands;
   private final boolean enableDbus;
@@ -81,6 +87,7 @@ public class Configuration {
     ssid = optionalFromOption(options, SSID_SPEC);
     logFile = optionalFromOption(options, LOG_FILE_SPEC);
     statusFile = optionalFromOption(options, STATUS_FILE_SPEC);
+    socket = optionalFromOption(options, SOCKET_SPEC);
     runIntervalSec = options.valueOf(RUN_INTERVAL_SPEC);
     enableDbus = !options.has(DISABLE_DBUS_SPEC);
     helpRequested = options.has(HELP_SPEC);
@@ -132,6 +139,13 @@ public class Configuration {
    */
   public Optional<String> getStatusFile() {
     return statusFile;
+  }
+
+  /**
+   * Returns the socket on which to listen for interactive connections.
+   */
+  public Optional<Integer> getSocket() {
+    return socket;
   }
 
   /**

@@ -24,6 +24,7 @@ public class ConfigurationTest {
   private static final String TEST_SSID = "theNeighborsWifi";
   private static final String TEST_LOG_FILE = "/var/log/test_output_here";
   private static final String TEST_STATUS_FILE = "/home/user/.overseer";
+  private static final int TEST_SOCKET = 4000;
   private static final int TEST_RUN_INTERVAL = 888;
   private static final String COMMAND_1 = "run something --with flag";
   private static final String COMMAND_2 = "log anotherthing now";
@@ -36,11 +37,13 @@ public class ConfigurationTest {
         "--status_file", TEST_STATUS_FILE,
         "--run_interval", String.valueOf(TEST_RUN_INTERVAL),
         "--disable_dbus",
+        "--socket", String.valueOf(TEST_SOCKET),
         "--command", COMMAND_1,
         "--command", COMMAND_2});
     assertThat(config.getSsid()).isEqualTo(Optional.of(TEST_SSID));
     assertThat(config.getLogFile()).isEqualTo(Optional.of(TEST_LOG_FILE));
     assertThat(config.getStatusFile()).isEqualTo(Optional.of(TEST_STATUS_FILE));
+    assertThat(config.getSocket()).isEqualTo(Optional.of(TEST_SOCKET));
     assertThat(config.getRunIntervalSec()).isEqualTo(TEST_RUN_INTERVAL);
     assertThat(config.getCommands()).isEqualTo(ImmutableList.of(COMMAND_1, COMMAND_2));
     assertThat(config.getDbusEnabled()).isFalse();
@@ -54,6 +57,7 @@ public class ConfigurationTest {
     assertThat(config.getSsid()).isEqualTo(Optional.<String>absent());
     assertThat(config.getLogFile()).isEqualTo(Optional.<String>absent());
     assertThat(config.getStatusFile()).isEqualTo(Optional.<String>absent());
+    assertThat(config.getSocket()).isEqualTo(Optional.<Integer>absent());
     assertThat(config.getRunIntervalSec()).isEqualTo(300/* Default */);
     assertThat(config.getCommands()).isEqualTo(ImmutableList.of(COMMAND_1));
     assertThat(config.getDbusEnabled()).isTrue();

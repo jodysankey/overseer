@@ -23,6 +23,9 @@ import com.jsankey.overseer.ExecutionHistory.HistoryStatus;
  * <p>The class creates its own thread to do the work, and may safely be called
  * from other threads.
  * 
+ * <p>TODO: Actually since we're not going to be able to run as a true daemon it would be more
+ * efficient to use the main thread for this work rather than spawning a new one.
+ *
  * @author Jody
  */
 public class Executive {

@@ -26,6 +26,9 @@ public class OverseerApplication {
     configureLogs(config);
     Executive exec = Executive.from(config);
     exec.begin();
+    if (config.getSocket().isPresent()) {
+      SocketService.from(config.getSocket().get());
+    }
     // The executive is running on its own thread. We can just sleep on this one.
     waitIndefinitely();
   }
