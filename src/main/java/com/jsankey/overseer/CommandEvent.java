@@ -8,11 +8,11 @@ import com.google.common.base.Preconditions;
 /**
  * Represents a single execution of a command, in terms of the time execution
  * started and completed and the final outcome.
- * 
+ *
  * @author Jody
  */
 public class CommandEvent implements Serializable {
-  
+
   /** The exit code used when a command threw an exception during initialization. */
   public static final int COULD_NOT_START = 998;
   /** The exit code used when a command was forcible terminated instead of ending naturally. */
@@ -22,10 +22,10 @@ public class CommandEvent implements Serializable {
   private final Instant start;
   private final Instant end;
   private final int exitCode;
-    
+
   /**
    * Constructs a new {@link CommandEvent}.
-   * 
+   *
    * @param start the {@link Instant} at which execution started.
    * @param end the [approximate] {@link Instant} at which execution ended.
    * @param exitCode the exit code returned upon completion.
@@ -64,7 +64,7 @@ public class CommandEvent implements Serializable {
   public int getExitCode() {
     return exitCode;
   }
-    
+
   /**
    * Returns true iff the command completed successfully based on its return code.
    */

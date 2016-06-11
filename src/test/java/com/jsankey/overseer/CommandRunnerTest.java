@@ -14,10 +14,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class CommandRunnerTest {
-  
+
   private static final String TEST_COMMAND = "false ignored argument";
   private static final String INFINITE_COMMAND = "tail -F /dev/null";
-  
+
   private static final Instant T1 = Instant.ofEpochSecond(55550001);
   private static final Instant T2 = Instant.ofEpochSecond(55550002);
 
@@ -35,7 +35,7 @@ public class CommandRunnerTest {
     assertThat(testObject.getCommand()).isEqualTo(TEST_COMMAND);
     assertThat(testObject.getClock()).isSameAs(mockClock);
   }
-  
+
   @Test
   public void testNotYetRun() {
     assertThat(testObject.isRunning()).isFalse();
@@ -55,13 +55,13 @@ public class CommandRunnerTest {
     // Allow time for false to complete
     TimeUnit.MILLISECONDS.sleep(500);
     assertThat(testObject.isRunning()).isFalse();
-    
+
     CommandEvent lastExecution = testObject.getLastExecution();
     assertThat(lastExecution.getExitCode()).isEqualTo(1);
     assertThat(lastExecution.getStart()).isEqualTo(T1);
     assertThat(lastExecution.getEnd()).isEqualTo(T2);
   }
-  
+
   @Test
   public void testTermination() throws Exception {
     when(mockClock.instant()).thenReturn(T1, T2);

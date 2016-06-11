@@ -9,7 +9,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 /**
  * Utility class to determine whether the host is currently connected to a particular wifi network.
- * 
+ *
  * <p>The implementation depends on availability of the *nix iwconfig command so is not portable.
  */
 public class WifiStatusChecker {

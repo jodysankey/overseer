@@ -22,13 +22,13 @@ import com.google.common.collect.ImmutableMap;
 /**
  * Defines a history of the previous command executions in terms of the command, return code,
  * time of execution, and duration. This class is threadsafe.
- * 
+ *
  * @author Jody
  */
 public class ExecutionHistory implements Serializable {
-  
+
   private static final long serialVersionUID = 5493571979980728178L;
-  
+
   /** The maximum number of executions that are retained for each command. */
   @VisibleForTesting
   static final int MAX_HISTORY_SIZE = 10;
@@ -55,18 +55,18 @@ public class ExecutionHistory implements Serializable {
   private Optional<Instant> oldestStart;
   /** Cached calculated time of most recent failure */
   private Optional<Instant> newestFailure;
-    
+
   /**
    * Constructs a new instance from the supplied status file and commands, attempting to initialize
    * from the status file references if possible.
-   * 
+   *
    * @param filePath the path in which a config file should be stored
    * @param commands an {@link ImmutableList} of the commands whose history will be tracked
    */
   @VisibleForTesting
   ExecutionHistory(Optional<String> filePath, ImmutableList<String> commands) {
     this.filePath = filePath;
-    
+
     // Construct a valid clean history map.
     ImmutableMap.Builder<String, Deque<CommandEvent>> historyMapBuilder = ImmutableMap.builder();
     for (String command : commands) {
@@ -100,18 +100,18 @@ public class ExecutionHistory implements Serializable {
   /**
    * Constructs a new {@link ExecutionHistory} from the supplied configuration, attempting to
    * initialize from the status file this references if possible.
-   * 
+   *
    * @param config a {@link Configuration} used for initialization
    * @return a new {@link ExecutionHistory} instance
    */
   public static ExecutionHistory from(Configuration config) {
     return new ExecutionHistory(config.getStatusFile(), config.getCommands());
   }
-   
+
   /**
    * Records the successful or unsuccessful completion of a command in the command history,
    * updating the history file if one was specified.
-   * 
+   *
    * @param command the command that was run
    * @param start the {@link Instant} at which execution started
    * @param end the [approximate] {@link Instant} at which execution ended.
@@ -124,7 +124,7 @@ public class ExecutionHistory implements Serializable {
   /**
    * Records the successful or unsuccessful completion of a command in the command history,
    * updating the history file if one was specified.
-   * 
+   *
    * @param command the command that was run
    * @param event a {@link CommandEvent} describing the execution times and result
    */
@@ -148,7 +148,7 @@ public class ExecutionHistory implements Serializable {
     }
     history.addLast(event);
     recalculateSummaryState();
-    
+
     // If possible, save our new state to disk.
     if (filePath.isPresent()) {
       try {
@@ -197,7 +197,7 @@ public class ExecutionHistory implements Serializable {
     Instant newestFailure = Instant.MIN;
     Instant oldestStart = Instant.MAX;
     status = HistoryStatus.ALL_PASSED;
-    
+
     for (Deque<CommandEvent> commandHistory : historyMap.values()) {
       if (commandHistory.isEmpty()) {
         if (status == HistoryStatus.ALL_PASSED) {
@@ -225,10 +225,8 @@ public class ExecutionHistory implements Serializable {
 
   /**
    * Write the current object out to the history filePath.
-   * 
+   *
    * <p>Preconditions: {@code filePath} has been specified.
-   * 
-   * @throws IOException
    */
   private synchronized void writeToFile() throws IOException {
     Preconditions.checkArgument(filePath.isPresent());
@@ -236,13 +234,13 @@ public class ExecutionHistory implements Serializable {
       oos.writeObject(this);
     }
   }
-  
+
   /**
    * Reads a new object from the history filePath in the current object. Note that the returned
    * object will not have its transient fields populated so should not be made available externally.
-   * 
+   *
    * <p>Preconditions: {@code filePath} has been specified.
-   * 
+   *
    * @return the reconstructed {@link ExecutionHistory}
    * @throws IOException 
    * @throws FileNotFoundException 

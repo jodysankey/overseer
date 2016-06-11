@@ -19,7 +19,7 @@ import com.google.common.base.Preconditions;
  * @author Jody
  */
 public class CommandRunner {
-  
+
   /** Logger for the current class. */
   private static final Logger LOG = Logger.getLogger(CommandRunner.class.getCanonicalName());
   /** The bit bucket as a {@link File} for convenience of redirects. */
@@ -91,7 +91,7 @@ public class CommandRunner {
   public String getCommand() {
     return command;
   }
-  
+
   /**
    * Begins execution of the command then returns immediately.
    * 
@@ -109,7 +109,7 @@ public class CommandRunner {
       process = null;
     }
   }
-  
+
   /**
    * Terminates execution of the command if it is still running.
    */
@@ -121,7 +121,7 @@ public class CommandRunner {
       process = null;
     }
   }
-  
+
   /**
    * Returns true iff the command is currently executing.
    * 
@@ -152,7 +152,7 @@ public class CommandRunner {
     }
     return false;
   }
-  
+
   /**
    * Returns a {@link CommandEvent} representing the most recent completed execution.
    * 
@@ -165,5 +165,4 @@ public class CommandRunner {
     Preconditions.checkState(lastEvent != null, "Cannot get last execution before completion");
     return lastEvent;
   }
-
 }

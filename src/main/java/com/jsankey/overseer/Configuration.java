@@ -16,7 +16,7 @@ import joptsimple.OptionSpec;
 /**
  * Defines a configuration for the application, and creates this configuration
  * from command line options.
- * 
+ *
  * @author Jody
  */
 public class Configuration {

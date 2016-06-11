@@ -17,7 +17,7 @@ import com.jsankey.overseer.ExecutionHistory.HistoryStatus;
 
 @SuppressWarnings("static-method")
 public class ExecutionHistoryTest {
-  
+
   private static final String COMMAND_1 = "fake_command_one";
   private static final String COMMAND_2 = "fake_command_two";
   private static final Instant T1 = Instant.ofEpochSecond(44440001);
@@ -25,10 +25,10 @@ public class ExecutionHistoryTest {
   private static final Instant T3 = Instant.ofEpochSecond(44440003);
   private static final Instant T4 = Instant.ofEpochSecond(44440004);
   private static final Instant T5 = Instant.ofEpochSecond(44440005);
-  
+
   private static final int SUCCESS_CODE = 0;
   private static final int FAILURE_CODE = 99;
-  
+
   @Rule
   public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -42,7 +42,7 @@ public class ExecutionHistoryTest {
     assertThat(history.getOldestStart()).isEqualTo(Optional.of(T1));
     assertThat(history.getNewestFailure()).isEqualTo(Optional.absent());
   }
-   
+
   @Test
   public void testCommandNotRun() {
     ExecutionHistory history = createTwoCommandHistory();
@@ -72,7 +72,7 @@ public class ExecutionHistoryTest {
     assertThat(history.getOldestStart()).isEqualTo(Optional.of(T3));
     assertThat(history.getNewestFailure()).isEqualTo(Optional.absent());
   }
- 
+
   @Test
   public void testDiscardingOldHistoryEntries() {
     ExecutionHistory history = createOneCommandHistory();
@@ -85,7 +85,7 @@ public class ExecutionHistoryTest {
         .isEqualTo(Optional.of(T1.plus(ExecutionHistory.MAX_HISTORY_SIZE, ChronoUnit.SECONDS)));
     assertThat(history.getNewestFailure()).isEqualTo(Optional.absent());
   }
-  
+
   @Test
   public void testRestorationFromFile() {
     Path configPath = Paths.get(tempFolder.getRoot().getAbsolutePath(), "test-history.cfg");
