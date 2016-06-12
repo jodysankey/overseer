@@ -155,14 +155,22 @@ public class Executive {
    * resources, and preventing any further interaction with the object.
    * @throws InterruptedException 
    */
-  public void terminate() throws InterruptedException {
+  public void terminate() {
     Preconditions.checkState(runnerThread != null, "Cannot terminate already terminated executive");
     // Note deliberately don't synchronize. We only communicate with the other
     // thread via an atomically set reference, and don't want to deadlock.
+    LOG.info("Starting termination, waiting for runner to stop");
     runnerThread.interrupt();
     while (runnerThread != null) {
-      Thread.sleep(COMMAND_COMPLETION_CHECK_MILLIS);
+      try {
+        Thread.sleep(COMMAND_COMPLETION_CHECK_MILLIS);
+      } catch (InterruptedException e) {
+        // Nothing should interrupt the kill thread, 
+        LOG.warning("Recieved interrupt on the termination thread, ignoring");
+        Thread.currentThread().interrupt();
+      }
     }
+    LOG.info("Successfully finished termination");
   }
 
   /**

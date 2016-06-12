@@ -28,11 +28,11 @@ buildscript {
 
 // Declare the dependencies for production and test code
 dependencies {
-    // Compile time dependencies to inlcude in the JAR
+    // Compile time dependencies to include in the JAR
     compile 'com.google.guava:guava:19.0'
     compile 'net.sf.jopt-simple:jopt-simple:5.0.1'
-    // Nullable annotation
-    compile 'com.google.code.findbugs:jsr305:1.3.+'
+    compile 'com.google.code.findbugs:jsr305:1.3.+'  // Nullable annotation
+    compile 'org.glassfish:javax.json:1.0.4'
 
     // Unit test dependencies
     testCompile 'junit:junit:4.12'

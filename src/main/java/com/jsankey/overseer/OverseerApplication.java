@@ -6,6 +6,7 @@ import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
 
+import com.jsankey.overseer.Executive.Status;
 import com.jsankey.util.BriefTextFormatter;
 
 import joptsimple.OptionException;
@@ -19,18 +20,42 @@ public class OverseerApplication {
   private static final int SUCCESS_EXIT_CODE = 0;
   private static final int PARSE_ERROR_EXIT_CODE = 2;
   private static final int INTERRUPTED_EXIT_CODE = 3;
-  private static final int LONG_TIMEOUT_MILLIS = 15 * 60 * 1000;
+  private static final int TIMEOUT_MILLIS = 2 * 1000;
+
+  private final Executive exec;
 
   public static void main(String[] args) throws IOException {
     Configuration config = parseConfiguration(args);
     configureLogs(config);
-    Executive exec = Executive.from(config);
-    exec.begin();
+    new OverseerApplication(config).run();
+  }
+
+  /**
+   * Instantiates a new instance to run the supplied {@link Configuration}.
+   * @param config
+   * @throws IOException 
+   */
+  private OverseerApplication(Configuration config) throws IOException {
+    exec = Executive.from(config);
     if (config.getSocket().isPresent()) {
-      SocketService.from(config.getSocket().get());
+      SocketService.from(config.getSocket().get(), exec);
     }
-    // The executive is running on its own thread. We can just sleep on this one.
-    waitIndefinitely();
+  }
+
+  /**
+   * Starts the executive then Waits forever without consuming much CPU until it exits.
+   */
+  private void run() {
+    exec.begin();
+    // The executive is running on its own thread. We can just sleep on this one until its done.
+    try {
+      while (!Thread.currentThread().isInterrupted() && exec.getStatus() != Status.TERMINATED) {
+        Thread.sleep(TIMEOUT_MILLIS);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    System.exit(INTERRUPTED_EXIT_CODE);
   }
 
   /**
@@ -78,19 +103,5 @@ public class OverseerApplication {
     handler.setFormatter(new BriefTextFormatter());
     appLogger.setUseParentHandlers(false);
     appLogger.addHandler(handler);
-  }
-
-  /**
-   * Waits forever without consuming much CPU and exits gracefully if an interrupt occurs.
-   */
-  private static void waitIndefinitely() {
-    try {
-      while (!Thread.currentThread().isInterrupted()) {
-        Thread.sleep(LONG_TIMEOUT_MILLIS);
-      }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
-    System.exit(INTERRUPTED_EXIT_CODE);
   }
 }
