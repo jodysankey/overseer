@@ -82,6 +82,12 @@ public class SocketConnection implements Runnable {
         connection.write(jsonCommands.build());
       }
     },
+    CLOSE("Closes the current connection") {
+      @Override
+      public void execute(SocketConnection connection, Executive executive) {
+        connection.closeRequested = true;
+      }
+    },
     SHUTDOWN("Begins a graceful shutdown") {
       @Override
       public void execute(SocketConnection connection, Executive executive) {
@@ -105,6 +111,7 @@ public class SocketConnection implements Runnable {
   private final BufferedReader input;
   private final OutputStream output;
   private final Executive executive;
+  private boolean closeRequested;
 
   /**
    * Constructs a new connection using the supplied socket.
@@ -115,6 +122,7 @@ public class SocketConnection implements Runnable {
       this.executive = executive;
       this.input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
       this.output = socket.getOutputStream();
+      this.closeRequested = false;
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Exception creating socket connection", e);
       throw e;
@@ -130,22 +138,33 @@ public class SocketConnection implements Runnable {
 
   @Override
   public void run() {
+    LOG.info(String.format("Starting connection thread for %s", getSocketName()));
     Command.STATUS.execute(this, executive);
     try {
-      String inputLine;
-      while ((inputLine = input.readLine().toUpperCase()) != null && inputLine.length() > 0) {
-        Command command = Command.valueOf(inputLine);
-        command.execute(this, executive);
-      }
+      do {
+        String inputLine = input.readLine().toUpperCase();
+        if (inputLine != null && inputLine.length() > 0) {
+          try {
+            Command.valueOf(inputLine).execute(this, executive);
+          } catch (IllegalArgumentException e) {
+            LOG.info(String.format("Unknown command on connection: %s", inputLine));
+          }
+        }
+      } while (!closeRequested);
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Exception streaming socket connection", e);
+    } finally {
+      LOG.info(String.format("Finishing connection thread for %s", getSocketName()));
+      try {
+        socket.close();
+      } catch (IOException e) {
+        LOG.log(Level.WARNING, "Exception closing socket", e);
+      }
     }
+  }
 
-    try {
-      socket.close();
-    } catch (IOException e) {
-      LOG.log(Level.WARNING, "Exception closing socket", e);
-    }
+  private String getSocketName() {
+    return String.format("%s:%d", socket.getInetAddress().getHostAddress(), socket.getPort());
   }
 
   private synchronized void write(JsonStructure json) {
