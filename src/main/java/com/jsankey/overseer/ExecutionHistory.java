@@ -8,8 +8,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,13 +24,9 @@ import com.google.common.collect.ImmutableMap;
  *
  * @author Jody
  */
-public class ExecutionHistory implements Serializable {
+public class ExecutionHistory implements Serializable, Iterable<CommandHistory> {
 
-  private static final long serialVersionUID = 5493571979980728178L;
-
-  /** The maximum number of executions that are retained for each command. */
-  @VisibleForTesting
-  static final int MAX_HISTORY_SIZE = 10;
+  private static final long serialVersionUID = -91035340473517723L;
 
   /** Logger for the current class. */
   private static final Logger LOG = Logger.getLogger(ExecutionHistory.class.getCanonicalName());
@@ -48,7 +43,7 @@ public class ExecutionHistory implements Serializable {
   /** Path in which we attempt to store and recover the execution history. */
   private Optional<String> filePath;
   /** Map of the {@link ExecutionEvent} lists for each command */
-  private ImmutableMap<String, Deque<CommandEvent>> historyMap;
+  private ImmutableMap<String, CommandHistory> historyMap;
   /** Cached calculated overall status */
   private HistoryStatus status;
   /** Cached calculated time of oldest last-start */
@@ -68,9 +63,9 @@ public class ExecutionHistory implements Serializable {
     this.filePath = filePath;
 
     // Construct a valid clean history map.
-    ImmutableMap.Builder<String, Deque<CommandEvent>> historyMapBuilder = ImmutableMap.builder();
+    ImmutableMap.Builder<String, CommandHistory> historyMapBuilder = ImmutableMap.builder();
     for (String command : commands) {
-      historyMapBuilder.put(command, new ArrayDeque<CommandEvent>(MAX_HISTORY_SIZE));
+      historyMapBuilder.put(command, new CommandHistory(command));
     }
     historyMap = historyMapBuilder.build();
 
@@ -129,24 +124,9 @@ public class ExecutionHistory implements Serializable {
    * @param event a {@link CommandEvent} describing the execution times and result
    */
   public synchronized void recordEvent(String command, CommandEvent event) {
-    Deque<CommandEvent> history = historyMap.get(command);
+    CommandHistory history = historyMap.get(command);
     Preconditions.checkNotNull(history, "Asked to record event for unknown command " + command);
-
-    if (!history.isEmpty()) {
-      if (event.getEnd().isBefore(history.getLast().getEnd())) {
-        // Ensure we keep the history monotonically increasing. This problem could occur in cases
-        // of system clock problems, so don't throw an exception here, just ignore.
-        LOG.warning(String.format("Ignoring new event at earlier time than history (%d < %d)",
-            event.getEnd().getEpochSecond(), history.getLast().getEnd().getEpochSecond()));
-        return;
-      }
-    }
-
-    // Mutate our deque for this command, clearing space if necessary.
-    if (history.size() >= MAX_HISTORY_SIZE) {
-      history.removeFirst();
-    }
-    history.addLast(event);
+    history.add(event);
     recalculateSummaryState();
 
     // If possible, save our new state to disk.
@@ -163,7 +143,7 @@ public class ExecutionHistory implements Serializable {
    * Returns an immutable copy of the execution history for the specified command.
    */
   public synchronized ImmutableList<CommandEvent> getCommandHistory(String command) {
-    Deque<CommandEvent> history = historyMap.get(command);
+    CommandHistory history = historyMap.get(command);
     Preconditions.checkNotNull(history, "Asked to return history for unknown command " + command);
     return ImmutableList.copyOf(history);
   }
@@ -198,7 +178,7 @@ public class ExecutionHistory implements Serializable {
     Instant oldestStart = Instant.MAX;
     status = HistoryStatus.ALL_PASSED;
 
-    for (Deque<CommandEvent> commandHistory : historyMap.values()) {
+    for (CommandHistory commandHistory : historyMap.values()) {
       if (commandHistory.isEmpty()) {
         if (status == HistoryStatus.ALL_PASSED) {
           status = HistoryStatus.NOT_ALL_RUN;
@@ -254,5 +234,10 @@ public class ExecutionHistory implements Serializable {
       reconstructed = (ExecutionHistory)ois.readObject();
     }
     return reconstructed;
+  }
+
+  @Override
+  public Iterator<CommandHistory> iterator() {
+    return historyMap.values().iterator();
   }
 }

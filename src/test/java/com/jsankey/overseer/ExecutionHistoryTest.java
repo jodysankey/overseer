@@ -76,13 +76,13 @@ public class ExecutionHistoryTest {
   @Test
   public void testDiscardingOldHistoryEntries() {
     ExecutionHistory history = createOneCommandHistory();
-    for (int i = 0; i < ExecutionHistory.MAX_HISTORY_SIZE + 1; i++) {
+    for (int i = 0; i < CommandHistory.MAX_HISTORY_SIZE + 1; i++) {
       history.recordEvent(
           COMMAND_1, T1.plus(i, ChronoUnit.SECONDS), T2.plus(i, ChronoUnit.SECONDS), SUCCESS_CODE);
     }
     assertThat(history.getStatus()).isEqualTo(HistoryStatus.ALL_PASSED);
     assertThat(history.getOldestStart())
-        .isEqualTo(Optional.of(T1.plus(ExecutionHistory.MAX_HISTORY_SIZE, ChronoUnit.SECONDS)));
+        .isEqualTo(Optional.of(T1.plus(CommandHistory.MAX_HISTORY_SIZE, ChronoUnit.SECONDS)));
     assertThat(history.getNewestFailure()).isEqualTo(Optional.absent());
   }
 
