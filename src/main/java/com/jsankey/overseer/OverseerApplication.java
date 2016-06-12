@@ -13,6 +13,7 @@ import java.util.logging.Handler;
 import java.util.logging.Logger;
 
 import com.jsankey.overseer.Executive.Status;
+import com.jsankey.overseer.io.SocketService;
 import com.jsankey.util.BriefTextFormatter;
 
 import joptsimple.OptionException;

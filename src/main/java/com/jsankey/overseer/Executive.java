@@ -13,7 +13,10 @@ import javax.annotation.Nullable;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.jsankey.overseer.ExecutionHistory.HistoryStatus;
+import com.jsankey.overseer.checks.WifiStatusChecker;
+import com.jsankey.overseer.history.ExecutionHistory;
+import com.jsankey.overseer.history.ExecutionHistory.HistoryStatus;
+import com.jsankey.overseer.runner.CommandRunner;
 
 /**
  * Master class that handles running each command at an appropriate time and

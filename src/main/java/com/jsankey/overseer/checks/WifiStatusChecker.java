@@ -1,4 +1,4 @@
-package com.jsankey.overseer;
+package com.jsankey.overseer.checks;
 
 import java.io.BufferedReader;
 import java.io.IOException;

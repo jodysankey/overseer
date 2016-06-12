@@ -1,4 +1,4 @@
-package com.jsankey.overseer;
+package com.jsankey.overseer.runner;
 
 import java.io.File;
 import java.io.IOException;
@@ -10,6 +10,7 @@ import javax.annotation.Nullable;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.jsankey.overseer.history.CommandEvent;
 
 /**
  * Initiates, terminates, and monitors execution of a given command.

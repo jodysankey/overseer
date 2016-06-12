@@ -1,4 +1,4 @@
-package com.jsankey.overseer;
+package com.jsankey.overseer.history;
 
 import java.io.Serializable;
 import java.time.Instant;

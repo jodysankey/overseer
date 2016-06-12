@@ -1,4 +1,4 @@
-package com.jsankey.overseer;
+package com.jsankey.overseer.history;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -17,6 +17,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.jsankey.overseer.Configuration;
 
 /**
  * Defines a history of the previous command executions in terms of the command, return code,

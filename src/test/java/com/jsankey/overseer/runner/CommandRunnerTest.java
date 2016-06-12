@@ -1,4 +1,4 @@
-package com.jsankey.overseer;
+package com.jsankey.overseer.runner;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -12,6 +12,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
 import org.junit.Test;
+
+import com.jsankey.overseer.history.CommandEvent;
+import com.jsankey.overseer.runner.CommandRunner;
 
 public class CommandRunnerTest {
 

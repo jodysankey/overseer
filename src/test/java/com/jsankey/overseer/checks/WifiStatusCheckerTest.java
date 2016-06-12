@@ -1,4 +1,4 @@
-package com.jsankey.overseer;
+package com.jsankey.overseer.checks;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
@@ -10,6 +10,8 @@ import java.io.IOException;
 
 import org.junit.Before;
 import org.junit.Test;
+
+import com.jsankey.overseer.checks.WifiStatusChecker;
 
 public class WifiStatusCheckerTest {
 
