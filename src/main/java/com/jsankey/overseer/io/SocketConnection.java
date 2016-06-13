@@ -15,6 +15,7 @@ import javax.json.JsonObject;
 import javax.json.JsonStructure;
 import javax.json.JsonWriter;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.jsankey.overseer.Configuration;
 import com.jsankey.overseer.Executive;
@@ -30,6 +31,7 @@ import com.jsankey.overseer.history.CommandHistory;
 public class SocketConnection implements Runnable {
 
   private static final Logger LOG = Logger.getLogger(SocketConnection.class.getCanonicalName());
+  private static final int INPUT_SIZE = 20;
 
   /**
    * Enumeration of all commands accepted on the interface, with a method to perform each.
@@ -52,7 +54,7 @@ public class SocketConnection implements Runnable {
     RUN("Begins a new execution of the commands immediately") {
       @Override
       public void execute(SocketConnection connection, Executive executive) {
-        executive.begin();
+        executive.runNow();
       }
     },
     STATUS("Returns a summary of the current status") {
@@ -115,7 +117,7 @@ public class SocketConnection implements Runnable {
   private final BufferedReader input;
   private final OutputStream output;
   private final Executive executive;
-  private boolean closeRequested;
+  @VisibleForTesting boolean closeRequested;
 
   /**
    * Constructs a new connection using the supplied socket.
@@ -124,7 +126,7 @@ public class SocketConnection implements Runnable {
     try {
       this.socket = socket;
       this.executive = executive;
-      this.input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      this.input = new BufferedReader(new InputStreamReader(socket.getInputStream()), INPUT_SIZE);
       this.output = socket.getOutputStream();
       this.closeRequested = false;
     } catch (IOException e) {
@@ -143,13 +145,12 @@ public class SocketConnection implements Runnable {
   @Override
   public void run() {
     LOG.info(String.format("Starting connection thread for %s", getSocketName()));
-    Command.STATUS.execute(this, executive);
     try {
       do {
-        String inputLine = input.readLine().toUpperCase();
+        String inputLine = input.readLine();
         if (inputLine != null && inputLine.length() > 0) {
           try {
-            Command.valueOf(inputLine).execute(this, executive);
+            Command.valueOf(inputLine.toUpperCase()).execute(this, executive);
           } catch (IllegalArgumentException e) {
             LOG.info(String.format("Unknown command on connection: %s", inputLine));
           }

@@ -60,7 +60,7 @@ public class ExecutionHistory implements Serializable, Iterable<CommandHistory> 
    * @param commands an {@link ImmutableList} of the commands whose history will be tracked
    */
   @VisibleForTesting
-  ExecutionHistory(Optional<String> filePath, ImmutableList<String> commands) {
+  public ExecutionHistory(Optional<String> filePath, ImmutableList<String> commands) {
     this.filePath = filePath;
 
     // Construct a valid clean history map.
