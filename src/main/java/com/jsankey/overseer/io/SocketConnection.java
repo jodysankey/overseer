@@ -19,6 +19,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.jsankey.overseer.Configuration;
 import com.jsankey.overseer.Executive;
+import com.jsankey.overseer.Executive.Status;
+import com.jsankey.overseer.Executive.StatusListener;
 import com.jsankey.overseer.history.CommandEvent;
 import com.jsankey.overseer.history.CommandHistory;
 
@@ -28,7 +30,7 @@ import com.jsankey.overseer.history.CommandHistory;
  *
  * @author Jody
  */
-public class SocketConnection implements Runnable {
+public class SocketConnection implements Runnable, StatusListener {
 
   private static final Logger LOG = Logger.getLogger(SocketConnection.class.getCanonicalName());
   private static final int INPUT_SIZE = 20;
@@ -145,6 +147,7 @@ public class SocketConnection implements Runnable {
   @Override
   public void run() {
     LOG.info(String.format("Starting connection thread for %s", getSocketName()));
+    executive.registerListener(this);
     try {
       do {
         String inputLine = input.readLine();
@@ -160,6 +163,7 @@ public class SocketConnection implements Runnable {
       LOG.log(Level.WARNING, "Exception streaming socket connection", e);
     } finally {
       LOG.info(String.format("Finishing connection thread for %s", getSocketName()));
+      executive.unregisterListener(this);
       try {
         socket.close();
       } catch (IOException e) {
@@ -175,5 +179,10 @@ public class SocketConnection implements Runnable {
   private synchronized void write(JsonStructure json) {
     JsonWriter writer = Json.createWriter(output);
     writer.write(json);
+  }
+
+  @Override
+  public void receiveStatus(Status status) {
+    Command.STATUS.execute(this, executive);
   }
 }

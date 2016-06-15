@@ -1,6 +1,7 @@
 package com.jsankey.overseer.io;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -32,6 +33,7 @@ public class SocketConnectionTest {
   private static final Instant TEST_END_TIME = Instant.ofEpochMilli(23456789L);
   private static final int TEST_EXIT_CODE = 0;
   private static final Executive.Status TEST_EXEC_STATUS = Executive.Status.BLOCKED_ON_WIFI;
+  private static final Executive.Status TEST_EXEC_STATUS_2 = Executive.Status.IDLE;
 
   private Socket mockSocket;
   private Executive mockExecutive;
@@ -41,7 +43,8 @@ public class SocketConnectionTest {
 
   private enum RunMode {
     SINGLE_READ,
-    LOOP_UNTIL_CLOSE
+    LOOP_UNTIL_CLOSE,
+    SEPARATE_THREAD
   }
 
   @Before
@@ -62,6 +65,8 @@ public class SocketConnectionTest {
 
   @After
   public void verifyNoFurtherInteractions() {
+    verify(mockExecutive).registerListener(testObject);
+    verify(mockExecutive).unregisterListener(testObject);
     Mockito.verifyNoMoreInteractions(mockExecutive);
   }
 
@@ -128,6 +133,25 @@ public class SocketConnectionTest {
     startTestObject(RunMode.SINGLE_READ);
   }
 
+  @Test(timeout=1000)
+  public void testStatusChange() throws Exception {
+    setTestInput("");
+    startTestObject(RunMode.SEPARATE_THREAD);
+
+    // Send two statuses, changing the state in between, then stop the object
+    testObject.receiveStatus(TEST_EXEC_STATUS);
+    when(mockExecutive.getStatus()).thenReturn(TEST_EXEC_STATUS_2);
+    testObject.receiveStatus(TEST_EXEC_STATUS_2);
+    testObject.closeRequested = true;
+    Thread.sleep(100L);
+
+    verify(mockExecutive, atLeastOnce()).getStatus();
+    verify(mockExecutive, atLeastOnce()).getHistory();
+    assertThat(outputStream.toString()).isEqualTo(
+        "{\"status\":\"BLOCKED_ON_WIFI\",\"last_start_ms\":\"12345678\"}"
+        + "{\"status\":\"IDLE\",\"last_start_ms\":\"12345678\"}");
+  }
+
   private void setTestInput(String input) throws IOException {
     InputStream inputStream = new ByteArrayInputStream(input.getBytes());
     when(mockSocket.getInputStream()).thenReturn(inputStream);
@@ -136,6 +160,10 @@ public class SocketConnectionTest {
   private void startTestObject(RunMode runMode) throws IOException {
     testObject = SocketConnection.from(mockSocket, mockExecutive);
     testObject.closeRequested = (runMode == RunMode.SINGLE_READ);
-    testObject.run();
+    if (runMode == RunMode.SEPARATE_THREAD) {
+      new Thread(testObject).start();
+    } else {
+      testObject.run();
+    }
   }
 }

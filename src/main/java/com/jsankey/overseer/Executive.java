@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,18 +45,6 @@ public class Executive {
   /** Logger for the current class. */
   private static final Logger LOG = Logger.getLogger(Executive.class.getCanonicalName());
 
-  private final int runIntervalSec;
-  private final ImmutableList<CommandRunner> commands;
-  private final ExecutionHistory history;
-  private final Clock clock;
-
-  private @Nullable Thread runnerThread;
-  private @Nullable CommandRunner activeCommand;
-  private @Nullable WifiStatusChecker wifiStatus;
-  private Instant automaticRunTime;
-  private Instant manualRunTime;
-  private boolean blockedOnWifi;
-
   public enum Status {
     /** A command is currently being executed */
     RUNNING,
@@ -69,14 +59,37 @@ public class Executive {
   }
 
   /**
+   * Trivial interface for classes that are interested in receiving status change updates.
+   */
+  public interface StatusListener {
+    /** Method called when there is a change in executive status. */
+    public void receiveStatus(Status status);
+  }
+
+  private final ImmutableList<CommandRunner> commands;
+  private final ExecutionHistory history;
+  private final Clock clock;
+  private final int runIntervalSec;
+  private final Set<StatusListener> listeners;
+
+  private @Nullable Thread runnerThread;
+  private @Nullable CommandRunner activeCommand;
+  private @Nullable WifiStatusChecker wifiStatus;
+  private Instant automaticRunTime;
+  private Instant manualRunTime;
+  private boolean blockedOnWifi;
+
+  /**
    * Constructs a new {@link Executive} from the supplied configuration.
    * 
    * @param config a {@link Configuration} used for initialization
    */
   private Executive(Configuration config) {
     this.history = ExecutionHistory.from(config);
-    this.runIntervalSec = config.getRunIntervalSec();
     this.clock = Clock.systemUTC();
+    this.runIntervalSec = config.getRunIntervalSec();
+    this.listeners = new HashSet<StatusListener>();
+
     this.wifiStatus =
         config.getSsid().isPresent() ? WifiStatusChecker.of(config.getSsid().get()) : null;
     this.blockedOnWifi = false;
@@ -120,7 +133,6 @@ public class Executive {
       return Status.FAILURE;
     } else {
       return Status.IDLE;
-      //TODO: Blocked on Wifi
     }
   }
 
@@ -154,9 +166,29 @@ public class Executive {
   }
 
   /**
+   * Adds a new {@link StatusListener} to the set which receive state change notices.
+   *
+   * @param listener a {@link StatusListener} that will receive callbacks
+   */
+  public synchronized void registerListener(StatusListener listener) {
+    Preconditions.checkState(
+        !listeners.contains(listener), "Cannot register a listener more than once");
+    listeners.add(listener);
+  }
+  /**
+   * Removes a {@link StatusListener} from the set which receive state change notices.
+   *
+   * @param listener a {@link StatusListener} that will no longer receive callbacks
+   */
+  public synchronized void unregisterListener(StatusListener listener) {
+    Preconditions.checkState(
+        listeners.contains(listener), "Cannot unregister a listener more than once");
+    listeners.remove(listener);
+  }
+
+  /**
    * Terminates any currently executing command immediately, killing the thread, releasing
    * resources, and preventing any further interaction with the object.
-   * @throws InterruptedException 
    */
   public void terminate() {
     Preconditions.checkState(runnerThread != null, "Cannot terminate already terminated executive");
@@ -195,6 +227,16 @@ public class Executive {
   }
 
   /**
+   * Sends the current status to all registered listeners.
+   */
+  private synchronized void sendStatus() {
+    Status status = getStatus();
+    for (StatusListener listener : listeners) {
+      listener.receiveStatus(status);
+    }
+  }
+
+  /**
    * Inner class to handle the actual execution on a dedicated thread.
    */
   private class ExecutiveRunner implements Runnable {
@@ -214,6 +256,7 @@ public class Executive {
       }
       //Communicate back to the parent that we stopped by clearing its reference.
       runnerThread = null;
+      sendStatus();
     }
 
     /**
@@ -228,6 +271,7 @@ public class Executive {
         }
       } finally {
         activeCommand = null;
+        sendStatus();
       }
     }
 
@@ -239,6 +283,7 @@ public class Executive {
       if (!Thread.currentThread().isInterrupted()) {
         try {
           activeCommand = command;
+          sendStatus();
           command.start();
           while (command.isRunning() && !Thread.currentThread().isInterrupted()) {
             Thread.sleep(COMMAND_COMPLETION_CHECK_MILLIS);
@@ -246,7 +291,6 @@ public class Executive {
         } finally {
           command.terminate();
           history.recordEvent(command.getCommand(), command.getLastExecution());
-          activeCommand = null;
         }
       }
     }
@@ -287,6 +331,7 @@ public class Executive {
         Instant nextCheckTime = clock.instant().plus(WIFI_STATUS_CHECK_MILLIS, ChronoUnit.MILLIS);
         Instant cachedManualRunTime = manualRunTime;
         blockedOnWifi = true;
+        sendStatus();
         while (!Thread.currentThread().isInterrupted()) {
           if (clock.instant().isAfter(nextCheckTime) || manualRunTime != cachedManualRunTime) {
             if (wifiStatus.connected()) {
@@ -300,6 +345,7 @@ public class Executive {
         }
       } finally {
         blockedOnWifi = false;
+        sendStatus();
       }
     }
   }
