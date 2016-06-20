@@ -1,3 +1,9 @@
+/*
+ * Copyright (C) 2016 Jody Sankey
+ *
+ * This software may be modified and distributed under the terms of the MIT license.
+ * See the LICENSE.md file for details.
+ */
 package com.jsankey.util;
 
 import java.util.logging.Formatter;
