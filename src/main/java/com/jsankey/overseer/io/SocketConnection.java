@@ -165,6 +165,8 @@ public class SocketConnection implements Runnable, StatusListener {
       LOG.info(String.format("Finishing connection thread for %s", getSocketName()));
       executive.unregisterListener(this);
       try {
+        socket.shutdownInput();
+        socket.shutdownOutput();
         socket.close();
       } catch (IOException e) {
         LOG.log(Level.WARNING, "Exception closing socket", e);
@@ -179,6 +181,11 @@ public class SocketConnection implements Runnable, StatusListener {
   private synchronized void write(JsonStructure json) {
     JsonWriter writer = Json.createWriter(output);
     writer.write(json);
+    try {
+      output.write("\n".getBytes());
+    } catch (IOException e) {
+      LOG.warning("Exception adding newline");
+    }
   }
 
   @Override

@@ -39,6 +39,18 @@ public class SocketService {
   }
 
   /**
+   * Closes the service and frees all associated resources.
+   */
+  public void close() {
+    threadPool.shutdown();
+    try {
+      serverSocket.close();
+    } catch (IOException e) {
+      // Really nothing effective to do about this since we're already in shutdown
+    }
+  }
+
+  /**
    * Runnable that sits on the thread pool to watch for new connections.
    */
   private class SocketAcceptor implements Runnable {

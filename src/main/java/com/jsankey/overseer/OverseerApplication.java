@@ -12,6 +12,7 @@ import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
 
+import com.google.common.base.Optional;
 import com.jsankey.overseer.Executive.Status;
 import com.jsankey.overseer.io.SocketService;
 import com.jsankey.util.BriefTextFormatter;
@@ -30,6 +31,7 @@ public class OverseerApplication {
   private static final int TIMEOUT_MILLIS = 2 * 1000;
 
   private final Executive exec;
+  private final Optional<SocketService> socketService;
 
   public static void main(String[] args) throws IOException {
     Configuration config = parseConfiguration(args);
@@ -45,7 +47,9 @@ public class OverseerApplication {
   private OverseerApplication(Configuration config) throws IOException {
     exec = Executive.from(config);
     if (config.getSocket().isPresent()) {
-      SocketService.from(config.getSocket().get(), exec);
+      socketService = Optional.of(SocketService.from(config.getSocket().get(), exec));
+    } else {
+      socketService = Optional.absent();
     }
   }
 
@@ -61,6 +65,9 @@ public class OverseerApplication {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+    }
+    if (socketService.isPresent()) {
+      socketService.get().close();
     }
     System.exit(INTERRUPTED_EXIT_CODE);
   }
