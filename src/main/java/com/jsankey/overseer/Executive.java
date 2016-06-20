@@ -148,21 +148,32 @@ public class Executive {
   }
 
   /**
+   * Begins execution for the first time, starting a new thread then returning immediately.
+   */
+  public synchronized void beginOnNewThread() {
+    Preconditions.checkState(runnerThread == null, "Cannot start running executive");
+    runnerThread = new Thread(this.new ExecutiveRunner());
+    runnerThread.start();
+  }
+
+  /**
+   * Begins execution for the first time, using the current thread and blocking until shutdown.
+   */
+  public void beginOnCurrentThread() {
+    synchronized (this) {
+      Preconditions.checkState(runnerThread == null, "Cannot start running executive");
+      runnerThread = Thread.currentThread();
+    }
+    this.new ExecutiveRunner().run();
+  }
+
+  /**
    * Start a new execution of the commands immediately, unless one is already in progress or
    * unless WiFi state currently prevents execution. 
    */
   public synchronized void runNow() {
     LOG.info("Scheduling manual start at current time");
     manualRunTime = this.clock.instant();
-  }
-
-  /**
-   * Begins execution for the first time.
-   */
-  public synchronized void begin() {
-    Preconditions.checkState(runnerThread == null, "Cannot start running executive");
-    runnerThread = new Thread(this.new ExecutiveRunner());
-    runnerThread.start();
   }
 
   /**

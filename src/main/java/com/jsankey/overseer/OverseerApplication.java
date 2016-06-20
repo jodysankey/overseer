@@ -13,7 +13,6 @@ import java.util.logging.Handler;
 import java.util.logging.Logger;
 
 import com.google.common.base.Optional;
-import com.jsankey.overseer.Executive.Status;
 import com.jsankey.overseer.io.SocketService;
 import com.jsankey.util.BriefTextFormatter;
 
@@ -28,7 +27,6 @@ public class OverseerApplication {
   private static final int SUCCESS_EXIT_CODE = 0;
   private static final int PARSE_ERROR_EXIT_CODE = 2;
   private static final int INTERRUPTED_EXIT_CODE = 3;
-  private static final int TIMEOUT_MILLIS = 2 * 1000;
 
   private final Executive exec;
   private final Optional<SocketService> socketService;
@@ -57,15 +55,7 @@ public class OverseerApplication {
    * Starts the executive then Waits forever without consuming much CPU until it exits.
    */
   private void run() {
-    exec.begin();
-    // The executive is running on its own thread. We can just sleep on this one until its done.
-    try {
-      while (!Thread.currentThread().isInterrupted() && exec.getStatus() != Status.TERMINATED) {
-        Thread.sleep(TIMEOUT_MILLIS);
-      }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
+    exec.beginOnCurrentThread();
     if (socketService.isPresent()) {
       socketService.get().close();
     }
