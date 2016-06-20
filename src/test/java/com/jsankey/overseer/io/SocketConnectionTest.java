@@ -91,8 +91,8 @@ public class SocketConnectionTest {
     startTestObject(RunMode.SINGLE_READ);
     verify(mockExecutive).getStatus();
     verify(mockExecutive).getHistory();
-    assertThat(outputStream.toString())
-        .isEqualTo("{\"status\":\"BLOCKED_ON_WIFI\",\"last_start_ms\":\"12345678\"}");
+    assertThat(outputStream.toString()).isEqualTo(
+        "{\"status\":\"BLOCKED_ON_WIFI\",\"last_start_ms\":\"12345678\"}\n");
   }
 
   @Test
@@ -102,7 +102,7 @@ public class SocketConnectionTest {
     verify(mockExecutive).getHistory();
     assertThat(outputStream.toString())
         .isEqualTo("[{\"command\":\"test command one\",\"executions\":"
-            + "[{\"start_ms\":12345678,\"end_ms\":23456789,\"exit_code\":0}]}]");
+            + "[{\"start_ms\":12345678,\"end_ms\":23456789,\"exit_code\":0}]}]\n");
   }
 
   @Test
@@ -148,8 +148,8 @@ public class SocketConnectionTest {
     verify(mockExecutive, atLeastOnce()).getStatus();
     verify(mockExecutive, atLeastOnce()).getHistory();
     assertThat(outputStream.toString()).isEqualTo(
-        "{\"status\":\"BLOCKED_ON_WIFI\",\"last_start_ms\":\"12345678\"}"
-        + "{\"status\":\"IDLE\",\"last_start_ms\":\"12345678\"}");
+        "{\"status\":\"BLOCKED_ON_WIFI\",\"last_start_ms\":\"12345678\"}\n"
+        + "{\"status\":\"IDLE\",\"last_start_ms\":\"12345678\"}\n");
   }
 
   private void setTestInput(String input) throws IOException {
