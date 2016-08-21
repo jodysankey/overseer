@@ -42,7 +42,6 @@ public class ConfigurationTest {
         "--log_file", TEST_LOG_FILE,
         "--status_file", TEST_STATUS_FILE,
         "--run_interval", String.valueOf(TEST_RUN_INTERVAL),
-        "--disable_dbus",
         "--socket", String.valueOf(TEST_SOCKET),
         "--command", COMMAND_1,
         "--command", COMMAND_2});
@@ -52,7 +51,6 @@ public class ConfigurationTest {
     assertThat(config.getSocket()).isEqualTo(Optional.of(TEST_SOCKET));
     assertThat(config.getRunIntervalSec()).isEqualTo(TEST_RUN_INTERVAL);
     assertThat(config.getCommands()).isEqualTo(ImmutableList.of(COMMAND_1, COMMAND_2));
-    assertThat(config.getDbusEnabled()).isFalse();
     assertThat(config.isHelpRequested()).isFalse();
     assertThat(config.isVersionRequested()).isFalse();
   }
@@ -66,7 +64,6 @@ public class ConfigurationTest {
     assertThat(config.getSocket()).isEqualTo(Optional.<Integer>absent());
     assertThat(config.getRunIntervalSec()).isEqualTo(300/* Default */);
     assertThat(config.getCommands()).isEqualTo(ImmutableList.of(COMMAND_1));
-    assertThat(config.getDbusEnabled()).isTrue();
     assertThat(config.isHelpRequested()).isFalse();
     assertThat(config.isVersionRequested()).isFalse();
   }

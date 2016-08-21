@@ -37,7 +37,6 @@ public class Configuration {
   private static final ArgumentAcceptingOptionSpec<String> STATUS_FILE_SPEC;
   private static final ArgumentAcceptingOptionSpec<Integer> SOCKET_SPEC;
   private static final ArgumentAcceptingOptionSpec<Integer> RUN_INTERVAL_SPEC;
-  private static final OptionSpec<Void> DISABLE_DBUS_SPEC;
   private static final OptionSpec<Void> HELP_SPEC;
   private static final OptionSpec<Void> VERSION_SPEC;
   private static final ArgumentAcceptingOptionSpec<String> COMMAND_SPEC;
@@ -59,8 +58,6 @@ public class Configuration {
         .withRequiredArg()
         .ofType(Integer.class)
         .defaultsTo(300);
-    DISABLE_DBUS_SPEC = PARSER
-        .accepts("disable_dbus", "Disables the DBus integration capability.");
     HELP_SPEC = PARSER
         .accepts("help", "Prints this help string.")
         .forHelp();
@@ -84,7 +81,6 @@ public class Configuration {
   private final Optional<Integer> socket;
   private final int runIntervalSec;
   private final ImmutableList<String> commands;
-  private final boolean enableDbus;
   private final boolean helpRequested;
   private final boolean versionRequested;
 
@@ -95,7 +91,6 @@ public class Configuration {
     statusFile = optionalFromOption(options, STATUS_FILE_SPEC);
     socket = optionalFromOption(options, SOCKET_SPEC);
     runIntervalSec = options.valueOf(RUN_INTERVAL_SPEC);
-    enableDbus = !options.has(DISABLE_DBUS_SPEC);
     helpRequested = options.has(HELP_SPEC);
     versionRequested = options.has(VERSION_SPEC);
     commands = ImmutableList.copyOf(options.valuesOf(COMMAND_SPEC));
@@ -166,13 +161,6 @@ public class Configuration {
    */
   public ImmutableList<String> getCommands() {
     return commands;
-  }
-
-  /**
-   * Returns true iff the dbus integration should be enabled.
-   */
-  public boolean getDbusEnabled() {
-    return enableDbus;
   }
 
   /**
