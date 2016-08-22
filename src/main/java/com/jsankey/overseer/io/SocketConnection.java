@@ -17,6 +17,7 @@ import java.util.logging.Logger;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
+import javax.json.JsonException;
 import javax.json.JsonObject;
 import javax.json.JsonStructure;
 import javax.json.JsonWriter;
@@ -165,7 +166,7 @@ public class SocketConnection implements Runnable, StatusListener {
           }
         }
       } while (!closeRequested);
-    } catch (IOException e) {
+    } catch (IOException|JsonException e) {
       LOG.log(Level.WARNING, "Exception streaming socket connection", e);
     } finally {
       LOG.info(String.format("Finishing connection thread for %s", getSocketName()));
