@@ -197,6 +197,14 @@ public class SocketConnection implements Runnable, StatusListener {
 
   @Override
   public void receiveStatus(Status status) {
-    Command.STATUS.execute(this, executive);
+    try {
+      Command.STATUS.execute(this, executive);
+    } catch (JsonException e) {
+      // If we fail once, we'll probably fail again. Shut the socket down so the executive
+      // thread doesn't  have to deal with this.
+      LOG.warning(String.format("Exception receiving status in connection %s, closing socket",
+          getSocketName(), e));
+      closeRequested = true;
+    }
   }
 }

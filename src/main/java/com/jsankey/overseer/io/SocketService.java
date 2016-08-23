@@ -11,6 +11,8 @@ import java.net.ServerSocket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.json.JsonException;
+
 import com.jsankey.overseer.Executive;
 
 /**
@@ -66,7 +68,7 @@ public class SocketService {
         try {
           SocketConnection connection = SocketConnection.from(serverSocket.accept(), executive);
           threadPool.execute(connection);
-        } catch (IOException e) {
+        } catch (IOException|JsonException e) {
           // Connection already logged the problem, just wait for another.
         }
       }
