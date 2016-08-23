@@ -6,6 +6,9 @@
  */
 package com.jsankey.util;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.logging.Formatter;
 import java.util.logging.LogRecord;
 
@@ -16,10 +19,19 @@ public class BriefTextFormatter extends Formatter {
 
   @Override
   public String format(LogRecord rec) {
-    String className =
-        rec.getSourceClassName().substring(rec.getSourceClassName().lastIndexOf(".") + 1);
-    String throwable = (rec.getThrown() == null) ? "" : String.format("%s%n", rec.toString());
-    return String.format("%1$tY-%1$tm-%1$td %1$tT %2$s [%3$s] %4$s%n%s",
-        rec.getMillis(), rec.getLevel().getName(), className, rec.getMessage(), throwable);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try (PrintStream printStream = new PrintStream(outputStream)) {
+      printStream.format("%1$tY-%1$tm-%1$td %1$tT ", rec.getMillis());
+      printStream.format(
+          "%s [%s] %s%n", rec.getLevel().getName(), unqualifiedClass(rec), rec.getMessage());
+      if (rec.getThrown() != null) {
+        rec.getThrown().printStackTrace(printStream);
+      }
+    }
+    return new String(outputStream.toByteArray(), StandardCharsets.UTF_8);
+  }
+
+  private static String unqualifiedClass(LogRecord rec) {
+    return rec.getSourceClassName().substring(rec.getSourceClassName().lastIndexOf(".") + 1);
   }
 }
