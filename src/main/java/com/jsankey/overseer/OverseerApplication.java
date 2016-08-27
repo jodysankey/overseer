@@ -30,6 +30,7 @@ public class OverseerApplication {
 
   private final Executive exec;
   private final Optional<SocketService> socketService;
+  private static final Logger LOG = Logger.getLogger(Executive.class.getCanonicalName());
 
   public static void main(String[] args) throws IOException {
     Configuration config = parseConfiguration(args);
@@ -55,6 +56,7 @@ public class OverseerApplication {
    * Starts the executive then Waits forever without consuming much CPU until it exits.
    */
   private void run() {
+    LOG.info("Launching application version " + Configuration.VERSION_STRING);
     exec.beginOnCurrentThread();
     if (socketService.isPresent()) {
       socketService.get().close();
