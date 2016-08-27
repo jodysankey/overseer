@@ -25,6 +25,9 @@ import com.jsankey.overseer.Executive;
 public class SocketServiceTest {
 
   private static final int TEST_PORT = 9999;
+  // Time to wait after sending a command before receiving results. Note this is
+  // longer than the sleep in the socket command procesor
+  private static final long RESPONSE_DELAY_MILLIS = 300L;
 
   private Executive mockExecutive;
   private SocketService socketService;
@@ -45,11 +48,11 @@ public class SocketServiceTest {
     TestSocket connection = TestSocket.connect();
 
     connection.sendCommand("help\n"); 
-    Thread.sleep(100L);
+    Thread.sleep(RESPONSE_DELAY_MILLIS);
     assertThat(connection.readResponse()).contains("\"commands\":[{");
 
     connection.sendCommand("close\n");
-    Thread.sleep(100L);
+    Thread.sleep(RESPONSE_DELAY_MILLIS);
     assertThat(connection.readResponse()).isNull();
   }
 
@@ -60,13 +63,13 @@ public class SocketServiceTest {
 
     c1.sendCommand("help\n"); 
     c2.sendCommand("help\n"); 
-    Thread.sleep(100L);
+    Thread.sleep(RESPONSE_DELAY_MILLIS);
     assertThat(c1.readResponse()).contains("\"commands\":[{");
     assertThat(c2.readResponse()).contains("\"commands\":[{");
 
     c2.sendCommand("close\n");
     c1.sendCommand("help\n"); 
-    Thread.sleep(100L);
+    Thread.sleep(RESPONSE_DELAY_MILLIS);
     assertThat(c1.readResponse()).contains("\"commands\":[{");
     assertThat(c2.readResponse()).isNull();
 

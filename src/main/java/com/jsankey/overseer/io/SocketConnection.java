@@ -6,9 +6,9 @@
  */
 package com.jsankey.overseer.io;
 
-import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.time.Instant;
@@ -41,6 +41,7 @@ public class SocketConnection implements Runnable, StatusListener {
 
   private static final Logger LOG = Logger.getLogger(SocketConnection.class.getCanonicalName());
   private static final int INPUT_SIZE = 20;
+  private static final int SOCKET_INPUT_CHECK_MILLIS = 200;
 
   /**
    * Enumeration of all commands accepted on the interface, with a method to perform each.
@@ -123,7 +124,7 @@ public class SocketConnection implements Runnable, StatusListener {
   }
 
   private final Socket socket;
-  private final BufferedReader input;
+  private final InputStream input;
   private final OutputStream output;
   private final Executive executive;
   @VisibleForTesting boolean closeRequested;
@@ -135,7 +136,7 @@ public class SocketConnection implements Runnable, StatusListener {
     try {
       this.socket = socket;
       this.executive = executive;
-      this.input = new BufferedReader(new InputStreamReader(socket.getInputStream()), INPUT_SIZE);
+      this.input = socket.getInputStream();
       this.output = socket.getOutputStream();
       this.closeRequested = false;
     } catch (IOException e) {
@@ -156,16 +157,14 @@ public class SocketConnection implements Runnable, StatusListener {
     LOG.info(String.format("Starting connection thread for %s", getSocketName()));
     executive.registerListener(this);
     try {
-      do {
-        String inputLine = input.readLine();
-        if (inputLine != null && inputLine.length() > 0) {
-          try {
-            Command.valueOf(inputLine.toUpperCase()).execute(this, executive);
-          } catch (IllegalArgumentException e) {
-            LOG.info(String.format("Unknown command on connection: %s", inputLine));
-          }
+      while (true) {
+        Command command = readCommand();
+        if (command != null) {
+          command.execute(this, executive);
         }
-      } while (!closeRequested);
+      }
+    } catch (InterruptedException e) {
+      // Valid exception caused to initiate shutdown.
     } catch (IOException|JsonException e) {
       LOG.log(Level.WARNING, "Exception streaming socket connection", e);
     } finally {
@@ -181,20 +180,6 @@ public class SocketConnection implements Runnable, StatusListener {
     }
   }
 
-  private String getSocketName() {
-    return String.format("%s:%d", socket.getInetAddress().getHostAddress(), socket.getPort());
-  }
-
-  private synchronized void write(JsonStructure json) {
-    JsonWriter writer = Json.createWriter(output);
-    writer.write(json);
-    try {
-      output.write("\n".getBytes());
-    } catch (IOException e) {
-      LOG.warning("Exception adding newline");
-    }
-  }
-
   @Override
   public void receiveStatus(Status status) {
     try {
@@ -205,6 +190,79 @@ public class SocketConnection implements Runnable, StatusListener {
       LOG.warning(String.format("Exception receiving status in connection %s, closing socket",
           getSocketName(), e));
       closeRequested = true;
+    }
+  }
+
+  /**
+   * Returns the hostname and port of the remote socket.
+   */
+  private String getSocketName() {
+    return String.format("%s:%d", socket.getInetAddress().getHostAddress(), socket.getPort());
+  }
+
+  /**
+   * Outputs a supplied {@link JsonStructure} on the socket with LF termination.
+   */
+  private synchronized void write(JsonStructure json) {
+    JsonWriter writer = Json.createWriter(output);
+    writer.write(json);
+    try {
+      output.write("\n".getBytes());
+    } catch (IOException e) {
+      LOG.warning("Exception adding newline");
+    }
+  }
+
+  /**
+   * Returns the next LF terminated command from the socket, or null if the line exceeds the max
+   * provisioned length. Adds log entries to document any problems parsing a valid command.
+   *
+   * @throws InterruptedException if close is requested
+   * @throws IOException is an IOError occurs or EOF is reached
+   */
+  private Command readCommand() throws InterruptedException, IOException {
+    String line = readLine();
+    if (line == null) {
+      LOG.info(String.format("Command too long on connection %s", getSocketName()));
+    } else {
+      try {
+        return Command.valueOf(line.toUpperCase());
+      } catch (IllegalArgumentException e) {
+        LOG.info(String.format("Unknown command on connection %s: %s", getSocketName(), line));
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Returns the next LF terminated command from the socket, or null if the line exceeds the max
+   * provisioned length.
+   *
+   * @throws InterruptedException if close is requested
+   * @throws IOException is an IOError occurs or EOF is reached
+   */
+  private String readLine() throws InterruptedException, IOException {
+    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+    while (true) {
+      if (closeRequested) {
+        throw new InterruptedException("Socket close requested");
+      } else if (input.available() == 0) {
+        Thread.sleep(SOCKET_INPUT_CHECK_MILLIS);
+      } else {
+        int b = input.read();
+        if (b < 0) {
+          throw new IOException("Read EOF from socket");
+        } else if (b == '\n') {
+          // EOL reached, only return buffer if we didn't completely fill/overflow it
+          if (buffer.size() > INPUT_SIZE) {
+            return null;
+          } else {
+            return buffer.toString();
+          }
+        } else if (buffer.size() <= INPUT_SIZE) {
+          buffer.write(b);
+        }
+      }
     }
   }
 }

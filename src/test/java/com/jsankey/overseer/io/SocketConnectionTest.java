@@ -41,16 +41,19 @@ public class SocketConnectionTest {
   private static final Executive.Status TEST_EXEC_STATUS = Executive.Status.BLOCKED_ON_WIFI;
   private static final Executive.Status TEST_EXEC_STATUS_2 = Executive.Status.IDLE;
 
+  private static final int EXECUTION_TIME_MILLIS = 100;
+
   private Socket mockSocket;
   private Executive mockExecutive;
   private ExecutionHistory testHistory;
   private ByteArrayOutputStream outputStream;
   private SocketConnection testObject;
+  private Thread runnerThread;
 
   private enum RunMode {
-    SINGLE_READ,
-    LOOP_UNTIL_CLOSE,
-    SEPARATE_THREAD
+    REQUEST_CLOSE,
+    EXPECT_SELF_CLOSE,
+    LEAVE_RUNNING
   }
 
   @Before
@@ -77,24 +80,24 @@ public class SocketConnectionTest {
   }
 
   @Test
-  public void testHelp() throws IOException {
+  public void testHelp() throws Exception {
     setTestInput("help\n");
-    startTestObject(RunMode.SINGLE_READ);
+    startTestObject(RunMode.REQUEST_CLOSE);
     assertThat(outputStream.toString())
         .contains("{\"RUN\":\"Begins a new execution of the commands immediately\"}");
   }
 
   @Test(timeout=1000)
-  public void testClose() throws IOException {
+  public void testClose() throws Exception {
     setTestInput("close\n");
-    startTestObject(RunMode.LOOP_UNTIL_CLOSE);
+    startTestObject(RunMode.EXPECT_SELF_CLOSE);
     verify(mockSocket).close();
   }
 
   @Test
-  public void testStatus() throws IOException {
+  public void testStatus() throws Exception {
     setTestInput("status\n");
-    startTestObject(RunMode.SINGLE_READ);
+    startTestObject(RunMode.REQUEST_CLOSE);
     verify(mockExecutive).getStatus();
     verify(mockExecutive).getHistory();
     assertThat(outputStream.toString()).isEqualTo(
@@ -102,9 +105,9 @@ public class SocketConnectionTest {
   }
 
   @Test
-  public void testHistory() throws IOException {
+  public void testHistory() throws Exception {
     setTestInput("history\n");
-    startTestObject(RunMode.SINGLE_READ);
+    startTestObject(RunMode.REQUEST_CLOSE);
     verify(mockExecutive).getHistory();
     assertThat(outputStream.toString())
         .isEqualTo("[{\"command\":\"test command one\",\"executions\":"
@@ -112,44 +115,44 @@ public class SocketConnectionTest {
   }
 
   @Test
-  public void testShutdown() throws IOException {
+  public void testShutdown() throws Exception {
     setTestInput("shutdown\n");
-    startTestObject(RunMode.SINGLE_READ);
+    startTestObject(RunMode.REQUEST_CLOSE);
     verify(mockExecutive).terminate();
   }
 
   @Test
-  public void testRun() throws IOException {
+  public void testRun() throws Exception {
     setTestInput("run\n");
-    startTestObject(RunMode.SINGLE_READ);
+    startTestObject(RunMode.REQUEST_CLOSE);
     verify(mockExecutive).runNow();
   }
 
   @Test(timeout=1000)
-  public void testUnknownCommandIgnored() throws IOException {
+  public void testUnknownCommandIgnored() throws Exception {
     setTestInput("iamgarbage\nhelp\nclose\n");
-    startTestObject(RunMode.LOOP_UNTIL_CLOSE);
+    startTestObject(RunMode.EXPECT_SELF_CLOSE);
     assertThat(outputStream.toString())
         .contains("{\"RUN\":\"Begins a new execution of the commands immediately\"}");
   }
 
   @Test
-  public void testLongCommand() throws IOException {
+  public void testLongCommand() throws Exception {
     setTestInput("i am a really long command thats longer than the input buffer\n");
-    startTestObject(RunMode.SINGLE_READ);
+    startTestObject(RunMode.REQUEST_CLOSE);
   }
 
   @Test(timeout=1000)
   public void testStatusChange() throws Exception {
     setTestInput("");
-    startTestObject(RunMode.SEPARATE_THREAD);
+    startTestObject(RunMode.LEAVE_RUNNING);
 
     // Send two statuses, changing the state in between, then stop the object
     testObject.receiveStatus(TEST_EXEC_STATUS);
     when(mockExecutive.getStatus()).thenReturn(TEST_EXEC_STATUS_2);
     testObject.receiveStatus(TEST_EXEC_STATUS_2);
     testObject.closeRequested = true;
-    Thread.sleep(100L);
+    runnerThread.join();
 
     verify(mockExecutive, atLeastOnce()).getStatus();
     verify(mockExecutive, atLeastOnce()).getHistory();
@@ -163,13 +166,16 @@ public class SocketConnectionTest {
     when(mockSocket.getInputStream()).thenReturn(inputStream);
   }
 
-  private void startTestObject(RunMode runMode) throws IOException {
+  private void startTestObject(RunMode mode) throws IOException, InterruptedException {
     testObject = SocketConnection.from(mockSocket, mockExecutive);
-    testObject.closeRequested = (runMode == RunMode.SINGLE_READ);
-    if (runMode == RunMode.SEPARATE_THREAD) {
-      new Thread(testObject).start();
-    } else {
-      testObject.run();
+    runnerThread = new Thread(testObject);
+    runnerThread.start();
+    if (mode == RunMode.REQUEST_CLOSE) {
+      Thread.sleep(EXECUTION_TIME_MILLIS);
+      testObject.closeRequested = true;
+    }
+    if (mode != RunMode.LEAVE_RUNNING) {
+      runnerThread.join();
     }
   }
 }
