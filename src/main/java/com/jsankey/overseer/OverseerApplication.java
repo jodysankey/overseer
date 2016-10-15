@@ -44,6 +44,7 @@ public class OverseerApplication {
    * @throws IOException 
    */
   private OverseerApplication(Configuration config) throws IOException {
+    LOG.info("Launching application version " + Configuration.VERSION_STRING);
     exec = Executive.from(config);
     if (config.getSocket().isPresent()) {
       socketService = Optional.of(SocketService.from(config.getSocket().get(), exec));
@@ -56,7 +57,6 @@ public class OverseerApplication {
    * Starts the executive then Waits forever without consuming much CPU until it exits.
    */
   private void run() {
-    LOG.info("Launching application version " + Configuration.VERSION_STRING);
     exec.beginOnCurrentThread();
     if (socketService.isPresent()) {
       socketService.get().close();

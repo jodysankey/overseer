@@ -28,7 +28,7 @@ import joptsimple.OptionSpec;
 public class Configuration {
 
   public static final String APP_NAME = "Overseer";
-  public static final String VERSION_STRING = "0.0.3";
+  public static final String VERSION_STRING = "0.0.4";
 
   // Statics for the parser and each of its component spec elements.
   private static final OptionParser PARSER;

@@ -359,6 +359,7 @@ public class Executive {
               cachedManualRunTime = manualRunTime;
             }
           }
+          Thread.sleep(MANUAL_REQUEST_CHECK_MILLIS);
         }
       } finally {
         blockedOnWifi = false;
