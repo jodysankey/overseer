@@ -10,20 +10,21 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 
 import javax.json.JsonException;
 
 import com.jsankey.overseer.Executive;
 
 /**
- * Accepts text based connections to the program via a server socket. Each connection
- * is handled by an instance of {@link SocketConnection}.
- *
- * @author Jody
+ * Accepts connections to the program via a server socket. Each connection is handled by an
+ * instance of {@link SocketConnection}.
  */
 public class SocketService {
 
   private static final int THREAD_LIMIT = 4;
+
+  private static final Logger LOG = Logger.getLogger(SocketConnection.class.getCanonicalName());
 
   private final ServerSocket serverSocket;
   private final ExecutorService threadPool;
@@ -64,6 +65,7 @@ public class SocketService {
   private class SocketAcceptor implements Runnable {
     @Override
     public void run() {
+      LOG.info("Starting server socket listening on port " + serverSocket.getLocalPort());
       while (true) {
         try {
           SocketConnection connection = SocketConnection.from(serverSocket.accept(), executive);

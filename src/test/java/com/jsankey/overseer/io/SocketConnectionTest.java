@@ -138,7 +138,21 @@ public class SocketConnectionTest {
 
   @Test
   public void testLongCommand() throws Exception {
-    setTestInput("i am a really long command thats longer than the input buffer\n");
+    setTestInput("i am a really long command thats longer thats much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much much much much much much much much much much much much much much "
+        + "much much much much longer than even the longer input buffer\n");
     startTestObject(RunMode.REQUEST_CLOSE);
   }
 
@@ -151,7 +165,7 @@ public class SocketConnectionTest {
     testObject.receiveStatus(TEST_EXEC_STATUS);
     when(mockExecutive.getStatus()).thenReturn(TEST_EXEC_STATUS_2);
     testObject.receiveStatus(TEST_EXEC_STATUS_2);
-    testObject.closeRequested = true;
+    testObject.parser.initiateClose();
     runnerThread.join();
 
     verify(mockExecutive, atLeastOnce()).getStatus();
@@ -172,7 +186,7 @@ public class SocketConnectionTest {
     runnerThread.start();
     if (mode == RunMode.REQUEST_CLOSE) {
       Thread.sleep(EXECUTION_TIME_MILLIS);
-      testObject.closeRequested = true;
+      testObject.parser.initiateClose();
     }
     if (mode != RunMode.LEAVE_RUNNING) {
       runnerThread.join();
