@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.logging.Logger;
 
 import javax.json.JsonStructure;
 
@@ -21,7 +22,9 @@ import javax.json.JsonStructure;
 abstract class ConnectionParser {
 
   private static final int INPUT_SIZE = 1024;
-  private static final int SOCKET_INPUT_CHECK_MILLIS = 200;
+  protected static final int SOCKET_INPUT_CHECK_MILLIS = 200;
+
+  protected static final Logger LOG = Logger.getLogger(ConnectionParser.class.getCanonicalName());
 
   protected final Socket socket;
   protected final InputStream input;
@@ -29,7 +32,7 @@ abstract class ConnectionParser {
 
   protected boolean closeRequested;
 
-  public class UpgradeRequested extends Exception {
+  public class UpgradeRequestedException extends Exception {
     private static final long serialVersionUID = 228774278790018938L;
   }
 
@@ -58,8 +61,10 @@ abstract class ConnectionParser {
    *
    * @throws InterruptedException if close is requested
    * @throws IOException is an IOError occurs or EOF is reached
+   * @throws UpgradeRequestedException if the remote host asks to upgrade to a web socket
    */
-  public abstract Command receiveInput() throws InterruptedException, IOException;
+  public abstract Command receiveInput()
+      throws InterruptedException, IOException, UpgradeRequestedException;
 
   /**
    * Outputs a supplied {@link JsonStructure} on the socket.
@@ -83,6 +88,29 @@ abstract class ConnectionParser {
   protected String readToLf() throws InterruptedException, IOException {
     ByteArrayOutputStream buffer = new ByteArrayOutputStream();
     while (true) {
+      int b = readByte();
+      if (b == '\n') {
+        // EOL reached, only return buffer if we didn't completely fill/overflow it
+        if (buffer.size() > INPUT_SIZE) {
+          return null;
+        } else {
+          return buffer.toString();
+        }
+      } else if (buffer.size() <= INPUT_SIZE) {
+        buffer.write(b);
+      }
+    }
+  }
+
+  /**
+   * Returns the next byte from the socket, waiting if necessary and handling shutdown requests
+   * gracefully.
+   *
+   * @throws InterruptedException if close is requested
+   * @throws IOException if an IOError occurs or EOF is reached
+   */
+  protected int readByte() throws InterruptedException, IOException {
+    while (true) {
       if (closeRequested) {
         throw new InterruptedException("Socket close requested");
       } else if (input.available() == 0) {
@@ -91,18 +119,9 @@ abstract class ConnectionParser {
         int b = input.read();
         if (b < 0) {
           throw new IOException("Read EOF from socket");
-        } else if (b == '\n') {
-          // EOL reached, only return buffer if we didn't completely fill/overflow it
-          if (buffer.size() > INPUT_SIZE) {
-            return null;
-          } else {
-            return buffer.toString();
-          }
-        } else if (buffer.size() <= INPUT_SIZE) {
-          buffer.write(b);
         }
+        return b;
       }
     }
   }
-
 }

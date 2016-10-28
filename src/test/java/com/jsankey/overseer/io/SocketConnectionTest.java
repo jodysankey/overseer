@@ -175,6 +175,34 @@ public class SocketConnectionTest {
         + "{\"status\":\"IDLE\",\"last_start_ms\":\"12345678\"}\n");
   }
 
+  @Test
+  public void testWebSocketUpgrade() throws Exception {
+    setTestInput("GET /overseer HTTP/1.1\r"
+        + "Host: localhost:4321\r\n"
+        + "Connection: Upgrade\r\n"
+        + "Pragma: no-cache\r\n"
+        + "Cache-Control: no-cache\r\n"
+        + "Upgrade: websocket\r\n"
+        + "Origin: file://\r\n"
+        + "Sec-WebSocket-Version: 13\r\n"
+        + "User-Agent: Dummy user agent\r\n"
+        + "Accept-Encoding: gzip, deflate, sdch\r\n"
+        + "Accept-Language: en-US,en;q=0.8\r\n"
+        + "Sec-WebSocket-Key: r7oPJjbmnmKEZdkzqALUrQ==\r\n"
+        + "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n"
+        + "\r\n");
+    startTestObject(RunMode.LEAVE_RUNNING);
+    Thread.sleep(EXECUTION_TIME_MILLIS);
+    assertThat(testObject.parser).isInstanceOf(String.class);
+    testObject.parser.initiateClose();
+    // Expected output
+    //  HTTP/1.1 101 Switching Protocols"
+    //  Upgrade: websocket
+    //  Connection: Upgrade
+    //  Sec-WebSocket-Accept: K1nj46hfwdYOhmXS2b8cAt1GR4c=
+
+  }
+
   private void setTestInput(String input) throws IOException {
     InputStream inputStream = new ByteArrayInputStream(input.getBytes());
     when(mockSocket.getInputStream()).thenReturn(inputStream);

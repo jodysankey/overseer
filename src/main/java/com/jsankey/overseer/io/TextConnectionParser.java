@@ -8,7 +8,6 @@ package com.jsankey.overseer.io;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.logging.Logger;
 
 import javax.json.Json;
 import javax.json.JsonStructure;
@@ -19,18 +18,18 @@ import javax.json.JsonWriter;
  */
 class TextConnectionParser extends ConnectionParser {
 
-  private static final Logger LOG = Logger.getLogger(TextConnectionParser.class.getCanonicalName());
-
   public TextConnectionParser(Socket socket) throws IOException {
     super(socket);
   }
 
   @Override
-  public Command receiveInput() throws InterruptedException, IOException {
+  public Command receiveInput()
+      throws InterruptedException, IOException, UpgradeRequestedException {
     String line = readToLf();
     if (line == null) {
       LOG.info(String.format("Command too long on connection %s", getSocketName()));
-    //} else if (line.equals(WebConnectionParser.WEBSOCKET_UPGRADE_START)) {
+    } else if (line.equals(WebConnectionParser.WEBSOCKET_UPGRADE_START)) {
+      throw new UpgradeRequestedException();
     } else {
       try {
         return Command.valueOf(line.toUpperCase());

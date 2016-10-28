@@ -17,6 +17,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.jsankey.overseer.Executive;
 import com.jsankey.overseer.Executive.Status;
 import com.jsankey.overseer.Executive.StatusListener;
+import com.jsankey.overseer.io.ConnectionParser.UpgradeRequestedException;
 
 
 /**
@@ -57,9 +58,13 @@ public class SocketConnection implements Runnable, StatusListener {
     executive.registerListener(this);
     try {
       while (true) {
-        Command command = parser.receiveInput();
-        if (command != null) {
-          command.execute(parser, executive);
+        try {
+          Command command = parser.receiveInput();
+          if (command != null) {
+            command.execute(parser, executive);
+          }
+        } catch (UpgradeRequestedException e) {
+          attemptUpgrade();
         }
       }
     } catch (InterruptedException e) {
@@ -81,14 +86,35 @@ public class SocketConnection implements Runnable, StatusListener {
 
   @Override
   public void receiveStatus(Status status) {
+    // Occasionally we'll null out the parser during an upgrade, if so just discard the update
+    if (parser != null) {
+      try {
+        Command.STATUS.execute(parser, executive);
+      } catch (JsonException e) {
+        // If we fail once, we'll probably fail again. Shut the socket down so the executive
+        // thread doesn't  have to deal with this.
+        LOG.warning(String.format("Exception receiving status in connection %s, closing socket",
+            parser.getSocketName(), e));
+        parser.initiateClose();
+      }
+    }
+  }
+
+  /**
+   * Attempts to safely replace the current parser with a websocket upgraded one.
+   */
+  private void attemptUpgrade() {
+    // Suspend the old parser while we're working, and try to create a new one
+    ConnectionParser oldParser = parser;
+    parser = null;
     try {
-      Command.STATUS.execute(parser, executive);
-    } catch (JsonException e) {
-      // If we fail once, we'll probably fail again. Shut the socket down so the executive
-      // thread doesn't  have to deal with this.
-      LOG.warning(String.format("Exception receiving status in connection %s, closing socket",
-          parser.getSocketName(), e));
-      parser.initiateClose();
+      WebConnectionParser newParser = new WebConnectionParser(socket);
+      parser = newParser.upgrade() ? newParser : oldParser;
+    } catch (InterruptedException|IOException e) {
+      // Interrupted exception should happen during upgrade since the parser isn't handling any
+      // traffic yet. In the case of an IO exception just fallback to the old parser.
+      LOG.warning(String.format("Exception upgrading socket %s", oldParser.getSocketName(), e));
+      parser = oldParser;
     }
   }
 }
