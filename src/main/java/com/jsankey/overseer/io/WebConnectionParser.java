@@ -9,7 +9,6 @@ package com.jsankey.overseer.io;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
@@ -39,6 +38,7 @@ public class WebConnectionParser extends ConnectionParser {
       + "Sec-WebSocket-Accept: %s\r\n\r\n";
   private static final String WEBSOCKET_UPGRADE_FAILURE = "400 Bad Request\r\n\r\n";
   private static final String WEBSOCKET_HASH_SUFFIX = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  private static final int MAX_SEND_LENGTH = (1 << 16);
 
   static final String WEBSOCKET_UPGRADE_START = "GET /overseer HTTP/1.1\r";
 
@@ -78,11 +78,15 @@ public class WebConnectionParser extends ConnectionParser {
     }
   }
 
+  /** Whether a close packet has been sent, in which case no further packets are sent. */
+  public boolean sentClose; 
+
   /**
    * Handles a web socket based socket protocol, including the upgrade process.
    */
   public WebConnectionParser(Socket socket) throws IOException {
     super(socket);
+    this.sentClose = false;
   }
 
   /**
@@ -110,14 +114,13 @@ public class WebConnectionParser extends ConnectionParser {
       // Verify the key was received
       if (key == null) {
         LOG.info("Denying websocket upgrade request without key");
-        output.write(WEBSOCKET_UPGRADE_FAILURE.getBytes());
+        writeWithFlush(WEBSOCKET_UPGRADE_FAILURE.getBytes());
       } else {
         String response = String.format(
             WEBSOCKET_UPGRADE_RESPONSE,
             DatatypeConverter.printBase64Binary(MessageDigest.getInstance("SHA-1")
                 .digest((key + WEBSOCKET_HASH_SUFFIX).getBytes("UTF-8"))));
-        output.write(response.getBytes());
-        output.flush();
+        writeWithFlush(response.getBytes());
         LOG.info("Successfully upgraded to websocket");
         return true;
       }
@@ -131,13 +134,17 @@ public class WebConnectionParser extends ConnectionParser {
   @Override
   public Command receiveInput() throws InterruptedException, IOException {
     Packet packet = readPacket();
-    LOG.info(String.format("Received packet (%s/%s)", packet.opCode.name(), new String(packet.data)));
     switch (packet.opCode) {
-      //TODO(jody): Handle close and ping pong
       case PING:
-      case PONG:
-      case CLOSE:
+        if (!sentClose) {
+          writePacket(new Packet(Packet.OpCode.PONG, packet.data));
+        }
         return null;
+      case PONG:
+        // Pongs are always legal and require no response
+        return null;
+      case CLOSE:
+        return Command.CLOSE;
       case TEXT:
         try {
           return Command.valueOf(new String(packet.data).toUpperCase());
@@ -152,21 +159,30 @@ public class WebConnectionParser extends ConnectionParser {
 
   @Override
   public void sendJson(JsonStructure json) {
-    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-    JsonWriter writer = Json.createWriter(buffer);
-    writer.write(json);
-    try {
-      writePacket(new Packet(Packet.OpCode.TEXT, buffer.toByteArray()));
-    } catch (IOException e) {
-      LOG.log(Level.WARNING, "Exception writing JSON to WebSocket", e);
+    if (!sentClose) {
+      ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+      JsonWriter writer = Json.createWriter(buffer);
+      writer.write(json);
+      try {
+        writePacket(new Packet(Packet.OpCode.TEXT, buffer.toByteArray()));
+      } catch (IOException e) {
+        LOG.log(Level.WARNING, "Exception writing JSON to WebSocket", e);
+      }
     }
-
   }
 
   @Override
   public void initiateClose() {
-    // TODO Auto-generated method stub
-
+    if (!sentClose) {
+      try {
+        writePacket(new Packet(Packet.OpCode.CLOSE, new byte[0]));
+      } catch (IOException e) {
+        // Failures to send close are a common occurrence since the client may have already
+        // terminated the TCP connection. Just ignore them.
+      }
+      sentClose = true;
+    }
+    super.initiateClose();
   }
 
   /**
@@ -176,40 +192,45 @@ public class WebConnectionParser extends ConnectionParser {
    * @throws IOException if an IOError occurs or EOF is reached
    */
   private Packet readPacket() throws InterruptedException, IOException {
-
-    int opCodeByte = readByte();
-    if (opCodeByte < 0x80) {
-      throw new IOException("Received frame without FIN set.");
-    }
-    Packet.OpCode opCode = Packet.OpCode.fromInteger(opCodeByte & 0xF);
-    if (opCode == null) {
-      throw new IOException(String.format("Unsupported opcode: %02x", opCodeByte & 0xF));
-    }
-
-    int lengthByte = readByte();
-    if (lengthByte < 0x80) {
-      throw new IOException("Received unmasked frame from client.");
-    }
-    long length = 0;
-    if ((lengthByte & 0x7F) < 126) {
-      length = lengthByte & 0x7F;
-    } else {
-      LOG.info(String.format("Received long length byte: %d", lengthByte & 0x7F));
-      for (int i = 0; i < (((lengthByte & 0x7F) == 126) ? 2 : 8); i++) {
-        length = (length << 8) + readByte();
+    // Hold an additional lock so we receive contiguous packets.
+    readLock.lock();
+    try {
+      int opCodeByte = readByte();
+      if (opCodeByte < 0x80) {
+        throw new IOException("Received frame without FIN set.");
       }
-    }
+      Packet.OpCode opCode = Packet.OpCode.fromInteger(opCodeByte & 0xF);
+      if (opCode == null) {
+        throw new IOException(String.format("Unsupported opcode: %02x", opCodeByte & 0xF));
+      }
 
-    int mask[] = new int[4];
-    for (int i = 0; i < 4; i++) {
-      mask[i] = readByte();
-    }
+      int lengthByte = readByte();
+      if (lengthByte < 0x80) {
+        throw new IOException("Received unmasked frame from client.");
+      }
+      long length = 0;
+      if ((lengthByte & 0x7F) < 126) {
+        length = lengthByte & 0x7F;
+      } else {
+        LOG.info(String.format("Received long length byte: %d", lengthByte & 0x7F));
+        for (int i = 0; i < (((lengthByte & 0x7F) == 126) ? 2 : 8); i++) {
+          length = (length << 8) + readByte();
+        }
+      }
 
-    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-    for (long i = 0; i < length; i++) {
-      buffer.write(readByte() ^ mask[(int)i % 4]);
+      int mask[] = new int[4];
+      for (int i = 0; i < 4; i++) {
+        mask[i] = readByte();
+      }
+
+      ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+      for (long i = 0; i < length; i++) {
+        buffer.write(readByte() ^ mask[(int)i % 4]);
+      }
+      return new Packet(opCode, buffer.toByteArray());
+    } finally {
+      readLock.unlock();
     }
-    return new Packet(opCode, buffer.toByteArray());
   }
 
   /**
@@ -219,16 +240,18 @@ public class WebConnectionParser extends ConnectionParser {
    * @throws IOException if an IOError occurs or EOF is reached
    */
   private void writePacket(Packet packet) throws IOException {
-    output.write(0x80 | packet.opCode.value);
+    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+    buffer.write(0x80 | packet.opCode.value);
     if (packet.data.length < 126) {
-      output.write(packet.data.length);
-    } else if (packet.data.length < Integer.MAX_VALUE) {
-      output.write(127);
-      output.write(ByteBuffer.allocate(4).putInt(packet.data.length).array());
+      buffer.write(packet.data.length);
+    } else if (packet.data.length < MAX_SEND_LENGTH) {
+      buffer.write(126);
+      buffer.write(packet.data.length / 256);
+      buffer.write(packet.data.length % 256);
     } else {
-      throw new IOException("Sending packets longer than 2GB is not supported.");
+      throw new IOException("Sending packets longer than 64K is not supported.");
     }
-    output.write(packet.data);
-    output.flush();
+    buffer.write(packet.data);
+    writeWithFlush(buffer.toByteArray());
   }
 }

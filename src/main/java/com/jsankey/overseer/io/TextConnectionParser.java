@@ -6,12 +6,12 @@
  */
 package com.jsankey.overseer.io;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
 import javax.json.Json;
 import javax.json.JsonStructure;
-import javax.json.JsonWriter;
 
 /**
  * Handles a standard text based raw socket protocol.
@@ -41,13 +41,10 @@ class TextConnectionParser extends ConnectionParser {
   }
 
   @Override
-  public synchronized void sendJson(JsonStructure json) {
-    JsonWriter writer = Json.createWriter(output);
-    writer.write(json);
-    try {
-      output.write("\n".getBytes());
-    } catch (IOException e) {
-      LOG.warning("Exception adding newline");
-    }
+  public void sendJson(JsonStructure json) throws IOException {
+    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+    Json.createWriter(buffer).write(json);;
+    buffer.write('\n');
+    writeWithFlush(buffer.toByteArray());
   }
 }

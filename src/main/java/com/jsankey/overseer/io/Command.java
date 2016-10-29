@@ -6,6 +6,7 @@
  */
 package com.jsankey.overseer.io;
 
+import java.io.IOException;
 import java.time.Instant;
 
 import javax.json.Json;
@@ -24,7 +25,7 @@ import com.jsankey.overseer.history.CommandHistory;
 enum Command {
   HELP("Returns the list of commands") {
     @Override
-    public void execute(ConnectionParser parser, Executive executive) {
+    public void execute(ConnectionParser parser, Executive executive) throws IOException {
       JsonArrayBuilder commandBuilder = Json.createArrayBuilder();
       for (Command command : Command.values()) {
         commandBuilder.add(Json.createObjectBuilder().add(command.name(), command.help));
@@ -44,7 +45,7 @@ enum Command {
   },
   STATUS("Returns a summary of the current status") {
     @Override
-    public void execute(ConnectionParser parser, Executive executive) {
+    public void execute(ConnectionParser parser, Executive executive) throws IOException {
       Optional<Instant> lastStart = executive.getHistory().getOldestStart();
       JsonObject json = Json.createObjectBuilder()
           .add("status", executive.getStatus().toString())
@@ -56,7 +57,7 @@ enum Command {
   },
   HISTORY("Returns full history for all commands") {
     @Override
-    public void execute(ConnectionParser parser, Executive executive) {
+    public void execute(ConnectionParser parser, Executive executive) throws IOException {
       JsonArrayBuilder jsonCommands = Json.createArrayBuilder();
       for (CommandHistory command : executive.getHistory()) {
         JsonArrayBuilder jsonExecutions = Json.createArrayBuilder();
@@ -75,7 +76,7 @@ enum Command {
   },
   VERSION("Returns software version") {
     @Override
-    public void execute(ConnectionParser parser, Executive executive) {
+    public void execute(ConnectionParser parser, Executive executive) throws IOException {
       JsonObject json = Json.createObjectBuilder()
           .add("version", Configuration.VERSION_STRING)
           .build();
@@ -104,6 +105,6 @@ enum Command {
   /**
    * Perform the command, mutating or reading from the supplied {@link Executive} as required.
    */
-  public abstract void execute(ConnectionParser parser, Executive executive);
+  public abstract void execute(ConnectionParser parser, Executive executive) throws IOException;
 }
 

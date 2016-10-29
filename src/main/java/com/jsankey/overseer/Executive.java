@@ -271,9 +271,10 @@ public class Executive {
       } catch (Exception e) {
         LOG.log(Level.SEVERE, "Fatal exception", e);
       }
+      // Send our final status out to any remaining listeners
+      sendStatus();
       //Communicate back to the parent that we stopped by clearing its reference.
       runnerThread = null;
-      sendStatus();
     }
 
     /**
