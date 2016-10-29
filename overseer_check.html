@@ -1,0 +1,191 @@
+<html>
+  <head>
+    <title>Overseer task scheduler monitor</title>
+    <meta name="charset" content="utf-8">
+    <meta name="author" content="Jody Sankey">
+    <style>
+      h1 {
+        font: bold 40px "FreeSans", sans-serif;
+        margin: 0px;
+        margin-bottom: 15px;
+      }
+      h2 {
+        font: bold 20px "FreeSans", sans-serif;
+        margin: 0px;
+        margin-bottom: 5px;
+      }
+      p,tr {
+        font: 15px "Arial", sans-serif;
+        margin: 0px;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      td, th {
+        padding: 5px;
+        text-align: center;
+        border: 1px solid black;
+      } 
+      table.times th {
+        text-align: right;
+      } 
+      button {
+        border-radius: 4px;
+        background-color: Grey;
+        color: White;
+        border: none;
+        outline: none;
+        font: bold 20px "FreeSans", sans-serif;
+        padding: 12px;
+        width: 150px;
+        transition: all 0.3s;
+        margin-right: 20px;
+      }
+      button:hover {
+        background-color: MediumBlue;
+      }
+      div {
+        margin: 20px;
+      }
+      body {
+        transition: background-color 0.5s ease;
+        background-color: LightBlue;
+      }
+      
+    </style>
+    <script type="text/javascript">
+
+      const POLL_INTERVAL = 20000;
+      const DEFAULT_COLOR = 'Cyan';
+      const STATE_COLORS = {
+        'RUNNING': 'Gold',
+        'IDLE': 'LightGreen',
+        'FAILURE': 'Salmon',
+        'BLOCKED_ON_WIFI': 'Gold',
+        'ERROR': 'DeepPink',
+        'NOT_CONNECTED': 'DeepPink',
+        'DISCONNECTED': 'DeepPink'
+      }
+
+      let lastRunTime = null;
+      let timer;
+      let socket;
+      let connected = false;
+     
+      function init() {
+        setState('NOT_CONNECTED')
+        socket = new WebSocket("ws://localhost:4321/overseer");
+        socket.onopen = function(evt) {
+            setState('CONNECTED');
+            socket.send('STATUS');
+        }
+        socket.onclose = function(evt) {
+            setState('DISCONNECTED');
+            setHistory([]);
+        }
+        socket.onerror = function(evt) {
+            console.log('Received error');
+            setState(evt.data);
+        }
+        socket.onmessage = function(evt) {
+            receivePacket(JSON.parse(evt.data));
+        }
+        timer = setTimeout(timerCallback, POLL_INTERVAL);
+      }
+
+      function receivePacket(json) {
+        if ('status' in json) {
+          setState(json.status, json.last_start_ms);
+        } else if (json.length > 0  && 'command' in json[0]) {
+          setHistory(json);
+        } else {
+          console.log('Received unknown packet: ' + json);
+        }
+      }   
+
+      function setState(stateString, runTime) {
+        state = stateString;
+        if (stateString in STATE_COLORS) {
+          document.body.style.backgroundColor = STATE_COLORS[stateString];
+        } else {
+          document.body.style.backgroundColor = DEFAULT_COLOR;
+        }
+        document.getElementById('result').textContent=stateString;
+        let runSpan = document.getElementById('run_time');
+        let receivedSpan = document.getElementById('received_time');
+        if (!runTime) {
+          // No run time means this update was locally generated
+          receivedSpan.textContent = 'N/K';
+          runSpan.textContent = 'N/K';
+        } else {
+          receivedSpan.textContent = dateString();
+          if (runTime !== lastRunTime) {
+            runSpan.textContent = dateString(runTime);
+            socket.send('HISTORY');
+          }
+          lastRunTime = runTime;
+        }
+      }
+ 
+      function setHistory(commands) {
+        let history = '';
+        for (command of commands) {
+          history += '<h2>' + command['command'] + '</h2>'
+              + '<table><tr><th>Start</th><th>Duration</th><th>RetCode</th></tr>'
+          for (execution of command['executions']) {
+            duration_ms = parseInt(execution['end_ms']) - parseInt(execution['start_ms']);
+            history += '<tr><td>' + dateString(execution['start_ms'])
+                + '</td><td>' + duration_ms / 1000.0 + ' sec</td><td>'
+                + execution['exit_code'] + '</td></tr>'
+          }
+          history += '</table>'
+        }
+        document.getElementById('history').innerHTML=history;
+      }
+     
+      function timerCallback() {
+        if (socket && socket.readyState == 1 /* OPEN */ ) {
+          socket.send('STATUS');
+        }
+        timer = setTimeout(timerCallback, POLL_INTERVAL);
+      }
+
+      function dateString(millis) {
+        let date = (!millis) ? new Date() : new Date(parseInt(millis));
+        return date.toLocaleString('en-US', {hour12: false});
+      }
+
+      function requestRun() {
+        if (socket && socket.readyState == 1 /* OPEN */ ) {
+          socket.send('RUN');
+        }
+      }
+ 
+      function requestShutdown() {
+        if (socket && socket.readyState == 1 /* OPEN */ ) {
+          socket.send('SHUTDOWN');
+        }
+      }
+      
+    </script>
+  </head>
+  <body onload="init();">
+    <div>
+      <h1 id="result">PENDING</h1>
+      <table class="times">
+        <tr><th>Last run</th><td id="run_time">N/K</td></tr>
+        <tr><th>Last received</th><td id="received_time">N/K</td></tr>
+      </table>
+    </div>
+    <div id="history">
+    </div>
+    <div>
+      <button onClick="requestRun()">Run Now</button>
+      <button onClick="requestShutdown()">Shutdown</button>
+    </div>
+  </body>
+</html>
+
+
+
+
