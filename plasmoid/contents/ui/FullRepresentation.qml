@@ -21,35 +21,28 @@ Item {
         anchors.fill: parent
         color: root.color
         Text {
-            text: root.text
+            text: root.status + "\n" + root.text + "\nLast run: " + root.runTime
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
-            anchors.fill: parent
+            anchors {
+                left: parent.left
+                top: parent.top
+                bottom: parent.bottom
+            }
+            width: parent.width / 2
             fontSizeMode: Text.Fit
             font.pixelSize: 100
         }
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.RightButton
-            onClicked: contextMenu.popup()
-        }
-    }
-
-    Menu {
-        id: contextMenu
-        title: "Basics"
-        MenuItem {
-            text: root.status
-            enabled: false
-        }
-        MenuItem {
-            text: "Last run:  " + root.runTime
-            enabled: false
-        }
-        MenuItem {
+        Button {
+            anchors {
+                left: parent.right
+                bottom: parent.bottom
+            }
+            width: parent.width / 2
+            height: parent.height / 4
             text: "Run now"
             enabled: root.connected
-            onTriggered: root.runRequested()
+            onClicked: root.runRequested()
         }
     }
 }
