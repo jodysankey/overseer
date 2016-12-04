@@ -44,5 +44,28 @@ Item {
             enabled: root.connected
             onClicked: root.runRequested()
         }
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.RightButton
+            onClicked: contextMenu.popup()
+        }
+    }
+
+    Menu {
+        id: contextMenu
+        title: "Basics"
+        MenuItem {
+            text: root.status
+            enabled: false
+        }
+        MenuItem {
+            text: "Last run:  " + root.runTime
+            enabled: false
+        }
+        MenuItem {
+            text: "Run now"
+            enabled: root.connected
+            onTriggered: root.runRequested()
+        }
     }
 }
