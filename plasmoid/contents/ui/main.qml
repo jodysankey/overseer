@@ -13,88 +13,90 @@ import org.kde.plasma.plasmoid 2.0
 Item {
     id: root
 
-    /**
-     * Updates the UI text based on stored state and current time
-     */
-    function updateDisplay() {
-        if (!updateDisplay.MAP) {
-            updateDisplay.MAP = {
-                'CONNECTED': 'Gold',
-                'RUNNING': 'Gold',
-                'IDLE': 'LightGreen',
-                'FAILURE': 'Salmon',
-                'BLOCKED_ON_WIFI': 'Gold',
-                'NOT_CONNECTED': 'DeepPink',
-                'DISCONNECTED': 'DeepPink'
-            };
-        }
-
-        if (!socket.last_run_ms) {
-            // If we don't know the last run, just display the status
-            statusModel.text = socket.status;
-        } else {
-            // If wse do know the last run, display elapsed time since then 
-            // in most significant time unit
-            var delta_sec = (new Date().getTime() - socket.last_run_ms) / 1000;
-            if (delta_sec < 60) {
-                statusModel.text = Math.floor(delta_sec) + "s";
-            } else if (delta_sec < 3600) {
-                statusModel.text = Math.floor(delta_sec / 60) + "m";
-            } else if (delta_sec < 86400) {
-                statusModel.text = Math.floor(delta_sec / 3600) + "h";
-            } else {
-                statusModel.text = Math.floor(delta_sec / 86400) + "d";
-            }
-        }
-        // Use color to display status
-        if (socket.status in updateDisplay.MAP) {
-            statusModel.color = updateDisplay.MAP[socket.status];
-        } else {
-            console.log("Unknown status: " + socket.status);
-            statusModel.color = "Cyan"
-        }
-    }
-
-    /**
-     * Returns a friendly formatted string from a JS Date
-     */
-    function dateString(date) {
-        return (date.getFullYear() + "-"
-            + ("0" + (date.getMonth() + 1)).slice(-2) + "-"
-            + ("0" + date.getDate()).slice(-2) + " "
-            + ("0" + date.getHours()).slice(-2)+ ":"
-            + ("0" + date.getMinutes()).slice(-2) + ":"
-            + ("0" + date.getSeconds()).slice(-2));
+    ListModel {
+        id: historyModel
+        ListElement {command: "Anacondases"}
     }
 
     Item {
         id: statusModel
-        property string text : "NOT_CONNECTED"
-        //property string status : "NOT_CONNECTED"
+        property string age: ""
         property string color: "LightBlue"
+        property var kStatusMap: {
+            'CONNECTED': 'Gold',
+            'RUNNING': 'Gold',
+            'IDLE': 'LightGreen',
+            'FAILURE': 'Salmon',
+            'BLOCKED_ON_WIFI': 'Grey',
+            'NOT_CONNECTED': 'DeepPink',
+            'DISCONNECTED': 'DeepPink'
+        }
+
+        /**
+         * Updates the UI text based on the current socket state
+         */
+        function update() {
+            if (!socket.lastRunMs) {
+                age = "?";
+            } else {
+                // If we do know the last run, display elapsed time since then 
+                // in most significant time unit
+                var delta_sec = (new Date().getTime() - socket.lastRunMs) / 1000;
+                if (delta_sec < 60) {
+                    age = Math.floor(delta_sec) + "s";
+                } else if (delta_sec < 3600) {
+                    age = Math.floor(delta_sec / 60) + "m";
+                } else if (delta_sec < 86400) {
+                    age = Math.floor(delta_sec / 3600) + "h";
+                } else {
+                    age = Math.floor(delta_sec / 86400) + "d";
+                }
+            }
+            // Use color to display status
+            if (socket.status in kStatusMap) {
+                color = kStatusMap[socket.status];
+            } else {
+                console.log("Unknown status: " + socket.status);
+                color = "Cyan"
+            }
+        }
+
+        /**
+         * Triggers a recalculation of the last run age.
+         */
+        Timer {
+            running: true
+            repeat: true
+            triggeredOnStart: true
+            interval: 5000
+            onTriggered: {
+                statusModel.update();
+            }
+        }
     }
 
     OverseerSocket {
         id: socket
-        onStatusChange: updateDisplay()
+        history: historyModel
+        onStatusChange: statusModel.update()
     }
 
     Plasmoid.backgroundHints: "NoBackground";
     Plasmoid.preferredRepresentation: Plasmoid.compactRepresentation
 
     Plasmoid.toolTipMainText: socket.status
-    Plasmoid.toolTipSubText: "Last Run: " +  (!socket.last_run_ms ? "N/K" : dateString(new Date(socket.last_run_ms)))
+    Plasmoid.toolTipSubText: "Last Run: " + socket.lastRunString
 
     Plasmoid.compactRepresentation: CompactRepresentation {
-        text: statusModel.text
+        text: statusModel.age
         color: statusModel.color
     }
     Plasmoid.fullRepresentation: FullRepresentation {
-        text: statusModel.text
         status: socket.status
+        lastRun: socket.lastRunString
+        version: socket.version
         color: statusModel.color
-        runTime: (!socket.last_run_ms ? "N/K" : dateString(new Date(socket.last_run_ms)))
-        //connected: (socket.status == WebSocket.Open)
-        //onRunRequested: socket.sendTextMessage("RUN")
+        history: historyModel
+        onRunRequested: socket.runNow()
     }
 }

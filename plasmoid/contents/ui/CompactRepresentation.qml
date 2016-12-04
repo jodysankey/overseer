@@ -27,26 +27,36 @@ Item {
         }
         color: root.color
         radius: 8
-        Text {
-            text: root.text
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            anchors {
-                fill: parent
-                leftMargin: 3
-                rightMargin: 3
-                topMargin: 1
-                bottomMargin: 1
+        Rectangle {
+            anchors.fill: parent
+            radius: 8
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#20FFFFFF" }
+                GradientStop { position: 0.4; color: "#00FFFFFF" }
+                GradientStop { position: 0.6; color: "#00000000" }
+                GradientStop { position: 1.0; color: "#20000000" }
             }
-            fontSizeMode: Text.Fit
-            style: Text.Raised
-            styleColor: "Grey"
-            renderType: Text.NativeRendering
-            font.pixelSize: 100
         }
         MouseArea {
             anchors.fill: parent
             onClicked: plasmoid.expanded = !plasmoid.expanded
         }
+    }
+    Text {
+        text: root.text
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        anchors {
+            fill: parent
+            leftMargin: 3
+            rightMargin: 3
+            topMargin: 1
+            bottomMargin: 1
+        }
+        fontSizeMode: Text.Fit
+        style: Text.Raised
+        styleColor: "Grey"
+        renderType: Text.NativeRendering
+        font.pixelSize: 100
     }
 }

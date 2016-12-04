@@ -9,9 +9,12 @@ import QtQuick 2.0
 import QtWebSockets 1.0
 
 Item { 
-    id: root
-    property var last_run_ms: null
-    property string status: "NOT CONNECTED"
+    property var lastRunMs: null
+    property var lastRunString: "N/K"
+    property var version: "N/K"
+    property string status: "NOT_CONNECTED"
+    property ListModel history
+
     signal statusChange()
 
     /**
@@ -35,9 +38,9 @@ Item {
         * Sets a state while not able to receive execution state from the server
         */
         function setLocalStatus(status) {
-            root.status = status;
-            root.last_run_ms = null;
-            historyModel.clear();
+            parent.status = status;
+            parent.lastRunMs = null;
+            parent.history.clear();
         }
 
         /**
@@ -46,24 +49,35 @@ Item {
         */
         function receivePacket(packet) {
             var json = JSON.parse(packet);
-            if ('status' in json) {
-                var updated_start_ms = parseInt(json.last_start_ms);
-                if (updated_start_ms !== internal.last_run_ms) {
-                    root.last_run_ms = updated_start_ms;
+            if ('version' in json) {
+                parent.version = json.version
+                socket.sendTextMessage("STATUS")
+            } else if ('status' in json) {
+                var updatedStartMs = parseInt(json.last_start_ms);
+                if (updatedStartMs !== parent.lastRunMs) {
+                    parent.lastRunMs = updatedStartMs;
+                    parent.lastRunString = Qt.formatDateTime(
+                        new Date(updatedStartMs), "yyyy-MM-dd hh:mm:ss");
                     socket.sendTextMessage("HISTORY");
+                    parent.status = json.status;
+                    statusChange();
+                } else if (parent.status != json.status) {
+                    parent.status = json.status;
+                    statusChange();
                 }
-                root.status = json.status;
-                statusChange();
             } else if (json.length > 0  && "command" in json[0]) {
-                historyModel.clear();
+                history.clear();
                 for (var i = 0; i < json.length ; i++) {
-                    var lastExec = json[i].executions[json[i].executions.length - 1];
-                    historyModel.append({
-                        "command": json[i].command,
-                        "last_start_ms": lastExec.start_ms,
-                        "last_duration_ms": lastExec.end_ms - lastExec.start_ms,
-                        "last_exit_code": lastExec.exit_code
-                    });
+                    //parent.history.append({"command": json[i].command});
+                    for (var j = json[i].executions.length -1; j >= 0; j--) {
+                        var run = json[i].executions[j]
+                        parent.history.append({
+                            "command": json[i].command,
+                            "start": Qt.formatDateTime(new Date(run.start_ms), "yyyy-MM-dd hh:mm"),
+                            "duration": Number((run.end_ms - run.start_ms) / 1000).toFixed(1) + " sec",
+                            "exitCode": run.exit_code
+                        });
+                    }
                 }
             } else {
                 console.log('Received unknown packet: ' + packet);
@@ -71,12 +85,9 @@ Item {
         }
     }
 
-    ListModel {
-        id: historyModel
-    }
-
     WebSocket {
         id: socket
+        // TODO(jody): Add a configuration page for port to avoid hardcoding.
         url: "ws://localhost:4321/overseer"
         onTextMessageReceived: {
             internal.receivePacket(message)
@@ -84,7 +95,7 @@ Item {
         onStatusChanged: 
             if (socket.status == WebSocket.Open) {
                 internal.setLocalStatus("CONNECTED")
-                socket.sendTextMessage("STATUS")
+                socket.sendTextMessage("VERSION")
                 statusChange();
             } else if (socket.status == WebSocket.Closed
                     || socket.status == WebSocket.Error) {
