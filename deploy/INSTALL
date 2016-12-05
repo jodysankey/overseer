@@ -1,0 +1,25 @@
+Still should do a decent amount of work here, specifically on CMake for the plasmoid.
+
+Install the following packages:
+  plasma-framework
+  qml-module-qtwebsockets
+
+If overseer is already installed shutdown with:
+  systemctl --user stop overseer.service
+
+If changes have been made rebuild an Installation package:
+  /home/jody/files/code/git/overseer/package.sh
+
+Install the contents on the target machine and fix ownership:
+  sudo mkdir /usr/local/bin/overseer
+  sudo tar -xvf /tmp/overseer_deployment.tar -C /usr/local/bin/overseer
+  sudo chown -R root /usr/local/bin/overseer/*
+  sudo chgrp -R root /usr/local/bin/overseer/*
+ 
+Make or edit user configuration file in then start:
+  /home/jody/.config/systemd/user/overseer.service
+  systemctl --user start overseer.service
+
+As the user, install the plasmoid:
+  plasmapkg2 --install /usr/bin/local/overseer/plasmoid
+And then install in a toolbar
