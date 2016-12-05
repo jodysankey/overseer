@@ -24,6 +24,7 @@ Item {
             fill: parent
             // Leave space for the expanded selector
             topMargin: 3
+            bottomMargin: 3
         }
         color: root.color
         radius: 8
@@ -48,10 +49,7 @@ Item {
         verticalAlignment: Text.AlignVCenter
         anchors {
             fill: parent
-            leftMargin: 3
-            rightMargin: 3
-            topMargin: 1
-            bottomMargin: 1
+            margins: 3
         }
         fontSizeMode: Text.Fit
         style: Text.Raised
