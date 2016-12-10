@@ -1,9 +1,11 @@
  /**
-  * KDE Plasma script to monitor Overseer execution status
+  * Expanded Plasmoid UI definition
   *
   * Copyright Jody Sankey 2016
+  *
+  * This software may be modified and distributed under the terms of the MIT license.
+  * See the LICENSE.md file for details.
   */
-
 import QtQml 2.2
 import QtQuick 2.0
 import QtQuick.Controls 1.4

@@ -1,3 +1,15 @@
+#====================================================================
+# CMake configuration for the Overseer plasmoid.
+#
+# WARNING: This file needs some seriour work and may not even work.
+#          I've been using "plasmapkg2 --install" to install instead.
+#
+# Copyright Jody Sankey 2016
+#
+# This software may be modified and distributed under the terms of
+# the MIT license. See the LICENSE.md file for details.
+#====================================================================
+
 # Set minimum CMake version
 cmake_minimum_required(VERSION 2.8.12)
 

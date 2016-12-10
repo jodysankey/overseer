@@ -1,6 +1,7 @@
-Still should do a decent amount of work here, specifically on CMake for the plasmoid.
+Still should do a decent amount of work here, particularly on
+CMake for the plasmoid.
 
-Install the following packages:
+On Kubuntu 16.04, first install the following packages:
   plasma-framework
   qml-module-qtwebsockets
 
