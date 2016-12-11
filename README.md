@@ -6,10 +6,11 @@ Overseer is a small Java application to run tasks periodically while certain con
 the success or failure of those tasks over a WebSocket interface. Some functionality might work on Windows, but
 I've only tested on Linux.
 
-Specifically I use it to run a couple of different unison synchronization commands periodically while I'm
-connected to my home network. There is a KDE5 plasmoid I leave in a toolbar to show the time since the last
-execution and the outcome of that execution, and to trigger a restart if necessary. This makes it easy to
-keep files synchronized continually, and to verify the age of the last sync. 
+Specifically I use it to run a couple of different [unison](https://www.cis.upenn.edu/~bcpierce/unison/)
+synchronization commands periodically while I'm connected to my home network. There is a KDE5 plasmoid I leave
+in a toolbar to show the time since the last execution and the outcome of that execution, and to trigger a
+restart if necessary. This makes it easy to keep files synchronized continually, and to verify the age of the
+last sync. 
 
 The invocation I use is as follows
 
