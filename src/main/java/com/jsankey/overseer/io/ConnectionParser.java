@@ -83,6 +83,7 @@ abstract class ConnectionParser {
    * Initiates an orderly shutdown for those protocols that require it.
    */
   public void initiateClose() {
+    LOG.info("Initiating connection close.");
     closeRequested = true;
   }
 

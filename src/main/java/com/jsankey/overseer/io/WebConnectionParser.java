@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -21,7 +22,6 @@ import java.util.regex.Pattern;
 import javax.json.Json;
 import javax.json.JsonStructure;
 import javax.json.JsonWriter;
-import javax.xml.bind.DatatypeConverter;
 
 /**
  * Handles a WebSocket based protocol including upgrade from a raw socket.
@@ -40,7 +40,7 @@ public class WebConnectionParser extends ConnectionParser {
   private static final String WEBSOCKET_HASH_SUFFIX = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   private static final int MAX_SEND_LENGTH = (1 << 16);
 
-  static final String WEBSOCKET_UPGRADE_START = "GET /overseer HTTP/1.1\r";
+  static final String WEBSOCKET_UPGRADE_START = "GET /overseer HTTP/1.1";
 
   /**
    * Simple representation of a decoded packet.
@@ -116,10 +116,11 @@ public class WebConnectionParser extends ConnectionParser {
         LOG.info("Denying websocket upgrade request without key");
         writeWithFlush(WEBSOCKET_UPGRADE_FAILURE.getBytes());
       } else {
+        byte[] keyResponse = (key + WEBSOCKET_HASH_SUFFIX).getBytes("UTF-8");
+        byte[] keyDigest = MessageDigest.getInstance("SHA-1").digest(keyResponse);
         String response = String.format(
             WEBSOCKET_UPGRADE_RESPONSE,
-            DatatypeConverter.printBase64Binary(MessageDigest.getInstance("SHA-1")
-                .digest((key + WEBSOCKET_HASH_SUFFIX).getBytes("UTF-8"))));
+            Base64.getEncoder().encodeToString(keyDigest));
         writeWithFlush(response.getBytes());
         LOG.info("Successfully upgraded to websocket");
         return true;

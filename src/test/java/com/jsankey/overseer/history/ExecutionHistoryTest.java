@@ -20,11 +20,8 @@ import org.junit.rules.TemporaryFolder;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.jsankey.overseer.Configuration;
-import com.jsankey.overseer.history.CommandHistory;
-import com.jsankey.overseer.history.ExecutionHistory;
 import com.jsankey.overseer.history.ExecutionHistory.HistoryStatus;
 
-@SuppressWarnings("static-method")
 public class ExecutionHistoryTest {
 
   private static final String COMMAND_1 = "fake_command_one";

@@ -24,7 +24,6 @@ import com.google.common.collect.ImmutableList;
 
 import joptsimple.OptionException;
 
-@SuppressWarnings("static-method")
 public class ConfigurationTest {
 
   private static final String TEST_SSID = "theNeighborsWifi";

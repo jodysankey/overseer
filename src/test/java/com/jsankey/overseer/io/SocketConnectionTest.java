@@ -41,7 +41,7 @@ public class SocketConnectionTest {
   private static final Executive.Status TEST_EXEC_STATUS = Executive.Status.BLOCKED_ON_WIFI;
   private static final Executive.Status TEST_EXEC_STATUS_2 = Executive.Status.IDLE;
 
-  private static final int EXECUTION_TIME_MILLIS = 100;
+  private static final int EXECUTION_TIME_MILLIS = 1000;
 
   private Socket mockSocket;
   private Executive mockExecutive;
@@ -193,8 +193,9 @@ public class SocketConnectionTest {
         + "\r\n");
     startTestObject(RunMode.LEAVE_RUNNING);
     Thread.sleep(EXECUTION_TIME_MILLIS);
-    assertThat(testObject.parser).isInstanceOf(String.class);
+    assertThat(testObject.parser).isInstanceOf(WebConnectionParser.class);
     testObject.parser.initiateClose();
+    Thread.sleep(EXECUTION_TIME_MILLIS);
     // Expected output
     //  HTTP/1.1 101 Switching Protocols"
     //  Upgrade: websocket

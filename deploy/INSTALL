@@ -22,5 +22,5 @@ Make or edit user configuration file in then start:
   systemctl --user start overseer.service
 
 As the user, install the plasmoid:
-  plasmapkg2 --install /usr/bin/local/overseer/plasmoid
+  plasmapkg2 --install /usr/local/bin/overseer/plasmoid
 And then install in a toolbar

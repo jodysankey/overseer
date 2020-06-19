@@ -21,7 +21,6 @@ import org.junit.Test;
 
 import com.jsankey.overseer.Executive;
 
-@SuppressWarnings("static-method")
 public class SocketServiceTest {
 
   private static final int TEST_PORT = 9999;

@@ -80,7 +80,6 @@ public class WifiStatusChecker {
    * This is designed to be mocked for testing.
    */
   @VisibleForTesting
-  @SuppressWarnings("static-method")
   Process createProcess() throws IOException {
     return new ProcessBuilder("iwconfig").start();
   }

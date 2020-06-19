@@ -28,7 +28,7 @@ class TextConnectionParser extends ConnectionParser {
     String line = readToLf();
     if (line == null) {
       LOG.info(String.format("Command too long on connection %s", getSocketName()));
-    } else if (line.equals(WebConnectionParser.WEBSOCKET_UPGRADE_START)) {
+    } else if (line.startsWith(WebConnectionParser.WEBSOCKET_UPGRADE_START)) {
       throw new UpgradeRequestedException();
     } else {
       try {

@@ -17,8 +17,6 @@ import java.io.IOException;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.jsankey.overseer.checks.WifiStatusChecker;
-
 public class WifiStatusCheckerTest {
 
   private static final String TEST_SSID = "ExampleNetwork";

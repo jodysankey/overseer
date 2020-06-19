@@ -115,11 +115,12 @@ public class SocketConnection implements Runnable, StatusListener {
     // Suspend the old parser while we're working, and try to create a new one
     ConnectionParser oldParser = parser;
     parser = null;
+    LOG.info("Starting attempt to upgrade to websocket");
     try {
       WebConnectionParser newParser = new WebConnectionParser(socket);
       parser = newParser.upgrade() ? newParser : oldParser;
     } catch (InterruptedException|IOException e) {
-      // Interrupted exception should happen during upgrade since the parser isn't handling any
+      // Interrupted exception shouldn't happen during upgrade since the parser isn't handling any
       // traffic yet. In the case of an IO exception just fallback to the old parser.
       LOG.warning(String.format("Exception upgrading socket %s", oldParser.getSocketName(), e));
       parser = oldParser;
