@@ -41,7 +41,7 @@ public class CommandRunnerTest {
   @Test
   public void testImmutableProperties() {
     assertThat(testObject.getCommand()).isEqualTo(TEST_COMMAND);
-    assertThat(testObject.getClock()).isSameAs(mockClock);
+    assertThat(testObject.getClock()).isSameInstanceAs(mockClock);
   }
 
   @Test
