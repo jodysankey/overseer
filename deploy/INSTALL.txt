@@ -4,6 +4,7 @@ CMake for the plasmoid.
 On Kubuntu 16.04, first install the following packages:
   plasma-framework
   qml-module-qtwebsockets
+  gradle
 
 If overseer is already installed shutdown with:
   systemctl --user stop overseer.service
@@ -24,3 +25,6 @@ Make or edit user configuration file in then start:
 As the user, install the plasmoid:
   plasmapkg2 --install /usr/local/bin/overseer/plasmoid
 And then install in a toolbar
+
+Can test the status of the backend using either the HTML or
+python _check tools without the plasmoid.

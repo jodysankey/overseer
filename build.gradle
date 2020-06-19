@@ -13,19 +13,19 @@ repositories {
     jcenter()
 }
 
-// Apply the java plugin to add support for Java
-apply plugin: 'java'
-
-// Enable one jar
-apply plugin: 'gradle-one-jar'
+// Enable shadow for making a unifier jar
 buildscript {
     repositories {
         jcenter()
     }
     dependencies {
-        classpath 'com.github.rholder:gradle-one-jar:1.0.4'
+        classpath 'com.github.jengelman.gradle.plugins:shadow:4.0.4'
     }
 }
+apply plugin: 'com.github.johnrengelman.shadow'
+
+// Apply the java plugin to add support for Java
+apply plugin: 'java'
 
 // Declare the dependencies for production and test code
 dependencies {
@@ -48,11 +48,7 @@ jar {
     }
 }
 
-// And a self-contained JAR including dependencies
-task jarBundle(type: OneJar) {
-  archiveName = 'OverseerBundle.jar'
-  mainClass = 'com.jsankey.overseer.OverseerApplication'
-  additionalDir = new File(rootDir.absolutePath, 'res')
-  // Adding a group marks the task as public for display in BuildShip
-  group = 'OneJar'
+shadowJar {
+    baseName = 'OverseerBundle'
+    classifier = ''
 }
