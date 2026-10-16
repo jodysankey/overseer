@@ -6,9 +6,8 @@
  */
 package com.jsankey.util;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.logging.Formatter;
 import java.util.logging.LogRecord;
 
@@ -19,19 +18,27 @@ public class BriefTextFormatter extends Formatter {
 
   @Override
   public String format(LogRecord rec) {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try (PrintStream printStream = new PrintStream(outputStream)) {
-      printStream.format("%1$tY-%1$tm-%1$td %1$tT ", rec.getMillis());
-      printStream.format(
-          "%s [%s] %s%n", rec.getLevel().getName(), unqualifiedClass(rec), rec.getMessage());
+    StringWriter output = new StringWriter();
+    try (PrintWriter writer = new PrintWriter(output)) {
+      writer.format("%1$tY-%1$tm-%1$td %1$tT ", rec.getMillis());
+      writer.format(
+          "%s [%s] %s%n", rec.getLevel().getName(), unqualifiedClass(rec), formatMessage(rec));
       if (rec.getThrown() != null) {
-        rec.getThrown().printStackTrace(printStream);
+        rec.getThrown().printStackTrace(writer);
       }
     }
-    return new String(outputStream.toByteArray(), StandardCharsets.UTF_8);
+    return output.toString();
   }
 
+  /**
+   * Returns the unqualified name of the class that issued the log, falling back to the logger
+   * name if the source class could not be determined.
+   */
   private static String unqualifiedClass(LogRecord rec) {
-    return rec.getSourceClassName().substring(rec.getSourceClassName().lastIndexOf(".") + 1);
+    String name = rec.getSourceClassName() != null ? rec.getSourceClassName() : rec.getLoggerName();
+    if (name == null) {
+      return "unknown";
+    }
+    return name.substring(name.lastIndexOf(".") + 1);
   }
 }

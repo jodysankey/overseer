@@ -8,6 +8,7 @@ package com.jsankey.overseer.io;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.logging.Logger;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -92,9 +93,17 @@ enum Command {
   SHUTDOWN("Begins a graceful shutdown") {
     @Override
     public void execute(ConnectionParser parser, Executive executive) {
-      executive.terminate();
+      try {
+        executive.terminate();
+      } catch (IllegalStateException e) {
+        // Another connection already shut the executive down, nothing more to do.
+        LOG.info(String.format("Ignoring shutdown from %s, executive already terminated",
+            parser.getSocketName()));
+      }
     }
   };
+
+  private static final Logger LOG = Logger.getLogger(Command.class.getCanonicalName());
 
   private String help;
 

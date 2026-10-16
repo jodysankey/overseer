@@ -77,6 +77,11 @@ public class SocketConnection implements Runnable, StatusListener {
       try {
         socket.shutdownInput();
         socket.shutdownOutput();
+      } catch (IOException e) {
+        // Common if the client already closed its end, carry on and close regardless.
+        LOG.log(Level.FINE, "Exception shutting down socket", e);
+      }
+      try {
         socket.close();
       } catch (IOException e) {
         LOG.log(Level.WARNING, "Exception closing socket", e);

@@ -9,6 +9,7 @@ package com.jsankey.overseer.io;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.Locale;
 
 import javax.json.Json;
 import javax.json.JsonStructure;
@@ -33,7 +34,7 @@ class TextConnectionParser extends ConnectionParser {
     } else {
       try {
         // Trim to tolerate CRLF line endings (e.g. from telnet) and stray whitespace.
-        return Command.valueOf(line.trim().toUpperCase());
+        return Command.valueOf(line.trim().toUpperCase(Locale.ROOT));
       } catch (IllegalArgumentException e) {
         LOG.info(String.format("Unknown command on connection %s: %s", getSocketName(), line));
       }

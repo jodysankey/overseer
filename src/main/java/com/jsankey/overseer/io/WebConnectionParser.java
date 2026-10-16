@@ -9,10 +9,12 @@ package com.jsankey.overseer.io;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -30,7 +32,9 @@ public class WebConnectionParser extends ConnectionParser {
 
   private static final Logger LOG = Logger.getLogger(WebConnectionParser.class.getCanonicalName());
 
-  private static final Pattern WEBSOCKET_KEY_PATTERN = Pattern.compile("Sec-WebSocket-Key: (.*)\r");
+  // HTTP header names are case insensitive.
+  private static final Pattern WEBSOCKET_KEY_PATTERN =
+      Pattern.compile("Sec-WebSocket-Key:\\s*(\\S+)\\s*\r", Pattern.CASE_INSENSITIVE);
   private static final String WEBSOCKET_UPGRADE_RESPONSE =
       "HTTP/1.1 101 Switching Protocols\r\n"
       + "Upgrade: websocket\r\n"
@@ -55,16 +59,17 @@ public class WebConnectionParser extends ConnectionParser {
       private final int value;
       private static final Map<Integer, OpCode> map = new HashMap<>();
 
+      static {
+        for (OpCode c : OpCode.values()) {
+          map.put(c.value, c);
+        }
+      }
+
       private OpCode(int value) {
         this.value = value;
       }
 
       public static OpCode fromInteger(int value) {
-        if (map.isEmpty()) {
-          for (OpCode c : OpCode.values()) {
-            map.put(c.value, c);
-          }
-        }
         return map.get(value);
       }
     }
@@ -79,7 +84,7 @@ public class WebConnectionParser extends ConnectionParser {
   }
 
   /** Whether a close packet has been sent, in which case no further packets are sent. */
-  public volatile boolean sentClose;
+  private volatile boolean sentClose;
 
   /**
    * Handles a web socket based socket protocol, including the upgrade process.
@@ -114,14 +119,14 @@ public class WebConnectionParser extends ConnectionParser {
       // Verify the key was received
       if (key == null) {
         LOG.info("Denying websocket upgrade request without key");
-        writeWithFlush(WEBSOCKET_UPGRADE_FAILURE.getBytes());
+        writeWithFlush(WEBSOCKET_UPGRADE_FAILURE.getBytes(StandardCharsets.US_ASCII));
       } else {
-        byte[] keyResponse = (key + WEBSOCKET_HASH_SUFFIX).getBytes("UTF-8");
+        byte[] keyResponse = (key + WEBSOCKET_HASH_SUFFIX).getBytes(StandardCharsets.US_ASCII);
         byte[] keyDigest = MessageDigest.getInstance("SHA-1").digest(keyResponse);
         String response = String.format(
             WEBSOCKET_UPGRADE_RESPONSE,
             Base64.getEncoder().encodeToString(keyDigest));
-        writeWithFlush(response.getBytes());
+        writeWithFlush(response.getBytes(StandardCharsets.US_ASCII));
         LOG.info("Successfully upgraded to websocket");
         return true;
       }
@@ -147,9 +152,9 @@ public class WebConnectionParser extends ConnectionParser {
       case CLOSE:
         return Command.CLOSE;
       case TEXT:
-        String text = new String(packet.data);
+        String text = new String(packet.data, StandardCharsets.UTF_8);
         try {
-          return Command.valueOf(text.toUpperCase());
+          return Command.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
           LOG.info(String.format("Unknown command on web socket %s: %s", getSocketName(), text));
         }

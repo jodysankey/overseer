@@ -8,11 +8,12 @@ package com.jsankey.overseer.io;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import javax.json.JsonException;
 
 import com.jsankey.overseer.Executive;
 
@@ -26,6 +27,8 @@ public class SocketService {
   private static final int CONNECTION_LIMIT = 4;
   /** Total threads in the pool: one per connection plus one for the {@link SocketAcceptor}. */
   private static final int THREAD_LIMIT = CONNECTION_LIMIT + 1;
+  /** Delay before retrying after a failure to accept a connection, to avoid a tight loop. */
+  private static final int ACCEPT_RETRY_MILLIS = 1000;
 
   private static final Logger LOG = Logger.getLogger(SocketService.class.getCanonicalName());
 
@@ -70,15 +73,44 @@ public class SocketService {
     public void run() {
       LOG.info("Starting server socket listening on port " + serverSocket.getLocalPort());
       while (!serverSocket.isClosed()) {
+        Socket socket;
         try {
-          SocketConnection connection = SocketConnection.from(serverSocket.accept(), executive);
-          threadPool.execute(connection);
-        } catch (IOException|JsonException e) {
-          // Either the server socket was closed during shutdown, in which case the loop will exit,
-          // or the connection already logged the problem, so just wait for another.
+          socket = serverSocket.accept();
+        } catch (IOException e) {
+          if (serverSocket.isClosed()) {
+            // Normal during shutdown, the loop will exit.
+            break;
+          }
+          // Something like running out of file descriptors; log it and back off before retrying.
+          LOG.log(Level.WARNING, "Exception accepting connection", e);
+          try {
+            Thread.sleep(ACCEPT_RETRY_MILLIS);
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            break;
+          }
+          continue;
+        }
+        try {
+          threadPool.execute(SocketConnection.from(socket, executive));
+        } catch (IOException e) {
+          // Connection already logged the problem, just clean up and wait for another.
+          closeQuietly(socket);
+        } catch (RejectedExecutionException e) {
+          // The service was closed while we were accepting this connection.
+          closeQuietly(socket);
+          break;
         }
       }
       LOG.info("Server socket closed, no longer accepting connections");
+    }
+
+    private void closeQuietly(Socket socket) {
+      try {
+        socket.close();
+      } catch (IOException e) {
+        // Nothing useful to do, the connection is being abandoned anyway.
+      }
     }
   }
 }

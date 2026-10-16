@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
@@ -106,7 +107,7 @@ abstract class ConnectionParser {
           if (buffer.size() > INPUT_SIZE) {
             return null;
           } else {
-            return buffer.toString();
+            return buffer.toString(StandardCharsets.UTF_8);
           }
         } else if (buffer.size() <= INPUT_SIZE) {
           buffer.write(b);

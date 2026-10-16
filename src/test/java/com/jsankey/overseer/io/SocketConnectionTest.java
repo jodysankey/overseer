@@ -8,6 +8,7 @@ package com.jsankey.overseer.io;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
 import org.junit.After;
@@ -42,6 +44,14 @@ public class SocketConnectionTest {
   private static final Executive.Status TEST_EXEC_STATUS_2 = Executive.Status.IDLE;
 
   private static final int EXECUTION_TIME_MILLIS = 1000;
+
+  private static final String TEST_WEBSOCKET_KEY = "r7oPJjbmnmKEZdkzqALUrQ==";
+  // Accept value for TEST_WEBSOCKET_KEY as defined in RFC 6455 section 4.2.2.
+  private static final String EXPECTED_UPGRADE_RESPONSE =
+      "HTTP/1.1 101 Switching Protocols\r\n"
+      + "Upgrade: websocket\r\n"
+      + "Connection: Upgrade\r\n"
+      + "Sec-WebSocket-Accept: K1nj46hfwdYOhmXS2b8cAt1GR4c=\r\n\r\n";
 
   private Socket mockSocket;
   private Executive mockExecutive;
@@ -121,6 +131,16 @@ public class SocketConnectionTest {
     verify(mockExecutive).terminate();
   }
 
+  @Test(timeout=2000)
+  public void testShutdownWhenAlreadyTerminated() throws Exception {
+    doThrow(new IllegalStateException()).when(mockExecutive).terminate();
+    setTestInput("shutdown\nclose\n");
+    startTestObject(RunMode.EXPECT_SELF_CLOSE);
+    // The connection should survive the failed shutdown and go on to process the close.
+    verify(mockExecutive).terminate();
+    verify(mockSocket).close();
+  }
+
   @Test
   public void testRun() throws Exception {
     setTestInput("run\n");
@@ -177,7 +197,44 @@ public class SocketConnectionTest {
 
   @Test
   public void testWebSocketUpgrade() throws Exception {
-    setTestInput("GET /overseer HTTP/1.1\r\n"
+    setTestInput(webSocketRequest("Sec-WebSocket-Key: " + TEST_WEBSOCKET_KEY + "\r\n"));
+    startTestObject(RunMode.LEAVE_RUNNING);
+    Thread.sleep(EXECUTION_TIME_MILLIS);
+    assertThat(testObject.parser).isInstanceOf(WebConnectionParser.class);
+    testObject.parser.initiateClose();
+    runnerThread.join();
+
+    // Expect the upgrade response followed by a websocket close frame.
+    ByteArrayOutputStream expected = new ByteArrayOutputStream();
+    expected.write(EXPECTED_UPGRADE_RESPONSE.getBytes(StandardCharsets.US_ASCII));
+    expected.write(new byte[] {(byte) 0x88, 0x00});
+    assertThat(outputStream.toByteArray()).isEqualTo(expected.toByteArray());
+  }
+
+  @Test
+  public void testWebSocketUpgradeHeaderCaseInsensitive() throws Exception {
+    setTestInput(webSocketRequest("sec-websocket-key:  " + TEST_WEBSOCKET_KEY + " \r\n"));
+    startTestObject(RunMode.LEAVE_RUNNING);
+    Thread.sleep(EXECUTION_TIME_MILLIS);
+    assertThat(testObject.parser).isInstanceOf(WebConnectionParser.class);
+    testObject.parser.initiateClose();
+    runnerThread.join();
+    assertThat(new String(outputStream.toByteArray(), StandardCharsets.US_ASCII))
+        .startsWith(EXPECTED_UPGRADE_RESPONSE);
+  }
+
+  @Test
+  public void testWebSocketUpgradeWithoutKey() throws Exception {
+    setTestInput(webSocketRequest(""));
+    startTestObject(RunMode.REQUEST_CLOSE);
+    assertThat(testObject.parser).isInstanceOf(TextConnectionParser.class);
+    assertThat(outputStream.toString(StandardCharsets.US_ASCII))
+        .isEqualTo("HTTP/1.1 400 Bad Request\r\n\r\n");
+  }
+
+  /** Returns a websocket upgrade request, including the supplied key header line if any. */
+  private static String webSocketRequest(String keyLine) {
+    return "GET /overseer HTTP/1.1\r\n"
         + "Host: localhost:4321\r\n"
         + "Connection: Upgrade\r\n"
         + "Pragma: no-cache\r\n"
@@ -188,20 +245,9 @@ public class SocketConnectionTest {
         + "User-Agent: Dummy user agent\r\n"
         + "Accept-Encoding: gzip, deflate, sdch\r\n"
         + "Accept-Language: en-US,en;q=0.8\r\n"
-        + "Sec-WebSocket-Key: r7oPJjbmnmKEZdkzqALUrQ==\r\n"
+        + keyLine
         + "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n"
-        + "\r\n");
-    startTestObject(RunMode.LEAVE_RUNNING);
-    Thread.sleep(EXECUTION_TIME_MILLIS);
-    assertThat(testObject.parser).isInstanceOf(WebConnectionParser.class);
-    testObject.parser.initiateClose();
-    Thread.sleep(EXECUTION_TIME_MILLIS);
-    // Expected output
-    //  HTTP/1.1 101 Switching Protocols"
-    //  Upgrade: websocket
-    //  Connection: Upgrade
-    //  Sec-WebSocket-Accept: K1nj46hfwdYOhmXS2b8cAt1GR4c=
-
+        + "\r\n";
   }
 
   private void setTestInput(String input) throws IOException {
