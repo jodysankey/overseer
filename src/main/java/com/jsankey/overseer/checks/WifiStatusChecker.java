@@ -17,7 +17,8 @@ import com.google.common.annotations.VisibleForTesting;
 /**
  * Utility class to determine whether the host is currently connected to a particular wifi network.
  *
- * <p>The implementation depends on availability of the *nix iwconfig command so is not portable.
+ * <p>The implementation depends on availability of the NetworkManager nmcli command so is not
+ * portable.
  */
 public class WifiStatusChecker {
 
@@ -27,14 +28,15 @@ public class WifiStatusChecker {
   private static final File DEVNULL = new File("/dev/null");
 
   private final String targetSsid;
-  private final String searchString;
+  private final String expectedLine;
 
   /**
    * Constructs a new instance to check for the specified SSID.
    */
   private WifiStatusChecker(String targetSsid) {
     this.targetSsid = targetSsid;
-    this.searchString = String.format("SSID:\"%s\"", targetSsid);
+    // In terse mode nmcli escapes colons and backslashes within field values.
+    this.expectedLine = "yes:" + targetSsid.replace("\\", "\\\\").replace(":", "\\:");
   }
 
   /**
@@ -57,7 +59,7 @@ public class WifiStatusChecker {
           new BufferedReader(new InputStreamReader(wifiStatus.getInputStream()))) {
         String line;
         while ((line = reader.readLine()) != null) {
-          if (line.contains(searchString)) {
+          if (line.equals(expectedLine)) {
             found = true;
           }
         }
@@ -90,7 +92,12 @@ public class WifiStatusChecker {
   @VisibleForTesting
   Process createProcess() throws IOException {
     // Only stdout is used, so avoid creating (and leaking) pipes for stdin and stderr.
-    return new ProcessBuilder("iwconfig")
+    // List the cached scan results without triggering a rescan; the active network is marked "yes".
+    ProcessBuilder builder = new ProcessBuilder(
+        "nmcli", "-t", "-f", "active,ssid", "dev", "wifi", "list", "--rescan", "no");
+    // Prevent nmcli from localizing the "yes" marker.
+    builder.environment().put("LC_ALL", "C");
+    return builder
         .redirectInput(DEVNULL)
         .redirectError(DEVNULL)
         .start();

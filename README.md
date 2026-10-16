@@ -52,7 +52,7 @@ More invocation details are available using the `--help` flag.
 * `com.jsankey.overser` Contains the core of the program, including *Configuration* to interpret and store command
   line options and *Executive* to handle the scheduling.
 * `com.jsankey.overser.checks` contains the gating conditions on execution. Currently the only one of these is
-  to wait for a named Wifi network. The current implementation depends on `iwconfig` so is not cross platform.
+  to wait for a named Wifi network. The current implementation depends on NetworkManager's `nmcli` so is not cross platform.
 * `com.jsankey.overser.history` maintains a history of recent executions for each command and handles its
   serialzation/deserialization to the status file.
 * `com.jsankey.overser.io` handles everything to do with sockets including creation, thread management, WebSocket

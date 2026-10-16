@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jody Sankey
+ * Copyright (C) 2016-2026 Jody Sankey
  *
  * This software may be modified and distributed under the terms of the MIT license.
  * See the LICENSE.md file for details.
@@ -23,28 +23,21 @@ public class WifiStatusCheckerTest {
   private static final String WRONG_SSID = "WrongNetwork";
 
   private static final String CONNECTED_OUTPUT =
-    "enp2s0    no wireless extensions.\n"
-    + "wlp1s0    IEEE 802.11abgn  ESSID:\"ExampleNetwork\"  \n"
-    + "          Mode:Managed  Frequency:2.422 GHz  Access Point: AA:AA:AA:AA:AA:63   \n"
-    + "          Bit Rate=5.5 Mb/s   Tx-Power=15 dBm   \n"
-    + "          Retry short limit:7   RTS thr:off   Fragment thr:off\n"
-    + "          Power Management:off\n"
-    + "          Link Quality=48/70  Signal level=-62 dBm  \n"
-    + "          Rx invalid nwid:0  Rx invalid crypt:0  Rx invalid frag:0\n"
-    + "          Tx excessive retries:0  Invalid misc:45   Missed beacon:0\n"
-    + " \n"
-    + "lo        no wireless extensions.\n"
-    + " \n";
+    "no:OtherNetwork\n"
+    + "no:\n"
+    + "yes:ExampleNetwork\n"
+    + "no:ExampleNetwork\n"
+    + "no:ExampleNetworkExtended\n";
 
   private static final String DISCONNECTED_OUTPUT =
-    "enp2s0    no wireless extensions.\n"
-    + " \n"
-    + "wlp1s0    IEEE 802.11abgn  ESSID:off/any  \n"
-    + "          Mode:Managed  Access Point: Not-Associated   Tx-Power=15 dBm   \n"
-    + "          Retry short limit:7   RTS thr:off   Fragment thr:off\n"
-    + "          Power Management:off\n"
-    + "            \n"
-    + "lo        no wireless extensions.\n";
+    "no:OtherNetwork\n"
+    + "no:\n"
+    + "no:ExampleNetwork\n";
+
+  private static final String SPECIAL_SSID = "Odd:Net\\work";
+  private static final String SPECIAL_CONNECTED_OUTPUT =
+    "no:OtherNetwork\n"
+    + "yes:Odd\\:Net\\\\work\n";
 
   private WifiStatusChecker checker;
 
@@ -75,6 +68,20 @@ public class WifiStatusCheckerTest {
   public void testNoWifi() throws Exception {
     configureChecker(DISCONNECTED_OUTPUT, 0);
     assertThat(checker.connected()).isFalse();
+  }
+
+  @Test
+  public void testSsidPrefixDoesNotMatch() throws Exception {
+    checker = spy(WifiStatusChecker.of("Example"));
+    configureChecker(CONNECTED_OUTPUT, 0);
+    assertThat(checker.connected()).isFalse();
+  }
+
+  @Test
+  public void testEscapedSsid() throws Exception {
+    checker = spy(WifiStatusChecker.of(SPECIAL_SSID));
+    configureChecker(SPECIAL_CONNECTED_OUTPUT, 0);
+    assertThat(checker.connected()).isTrue();
   }
 
   @Test

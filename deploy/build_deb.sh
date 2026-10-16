@@ -70,7 +70,7 @@ Version: $VERSION
 Architecture: all
 Maintainer: Jody Sankey <software@jsankey.com>
 Installed-Size: $(du -sk --exclude=DEBIAN "$STAGE" | cut -f1)
-Depends: java17-runtime-headless
+Depends: java17-runtime-headless, network-manager
 Recommends: qml6-module-qtwebsockets, plasma-workspace (>= 4:6.0), python3
 Section: utils
 Priority: optional
