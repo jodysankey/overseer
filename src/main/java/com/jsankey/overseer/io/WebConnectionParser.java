@@ -79,7 +79,7 @@ public class WebConnectionParser extends ConnectionParser {
   }
 
   /** Whether a close packet has been sent, in which case no further packets are sent. */
-  public boolean sentClose; 
+  public volatile boolean sentClose;
 
   /**
    * Handles a web socket based socket protocol, including the upgrade process.
@@ -173,7 +173,8 @@ public class WebConnectionParser extends ConnectionParser {
   }
 
   @Override
-  public void initiateClose() {
+  // Synchronized so concurrent callers (connection and executive threads) send only one close.
+  public synchronized void initiateClose() {
     if (!sentClose) {
       try {
         writePacket(new Packet(Packet.OpCode.CLOSE, new byte[0]));

@@ -78,12 +78,14 @@ public class Executive {
   private final int runIntervalSec;
   private final Set<StatusListener> listeners;
 
-  private @Nullable Thread runnerThread;
-  private @Nullable CommandRunner activeCommand;
-  private @Nullable WifiStatusChecker wifiStatus;
-  private Instant automaticRunTime;
-  private Instant manualRunTime;
-  private boolean blockedOnWifi;
+  private final @Nullable WifiStatusChecker wifiStatus;
+
+  // Mutable state shared between the runner thread and callers on other threads.
+  private volatile @Nullable Thread runnerThread;
+  private volatile @Nullable CommandRunner activeCommand;
+  private volatile Instant automaticRunTime;
+  private volatile Instant manualRunTime;
+  private volatile boolean blockedOnWifi;
 
   /**
    * Constructs a new {@link Executive} from the supplied configuration.
@@ -208,11 +210,13 @@ public class Executive {
    * resources, and preventing any further interaction with the object.
    */
   public void terminate() {
-    Preconditions.checkState(runnerThread != null, "Cannot terminate already terminated executive");
     // Note deliberately don't synchronize. We only communicate with the other
-    // thread via an atomically set reference, and don't want to deadlock.
+    // thread via a volatile reference, and don't want to deadlock. Take a local copy since the
+    // runner may clear the reference at any time.
+    Thread thread = runnerThread;
+    Preconditions.checkState(thread != null, "Cannot terminate already terminated executive");
     LOG.info("Starting termination, waiting for runner to stop");
-    runnerThread.interrupt();
+    thread.interrupt();
     while (runnerThread != null) {
       try {
         Thread.sleep(COMMAND_COMPLETION_CHECK_MILLIS);

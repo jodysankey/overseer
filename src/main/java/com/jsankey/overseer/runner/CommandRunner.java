@@ -112,7 +112,7 @@ public class CommandRunner {
       process = builder.start();
     } catch (IOException e) {
       LOG.warning("Command failed initialization: " + command);
-      lastEvent = new CommandEvent(startTime, clock.instant(), CommandEvent.COULD_NOT_START);
+      lastEvent = new CommandEvent(startTime, endTime(), CommandEvent.COULD_NOT_START);
       process = null;
     }
   }
@@ -124,7 +124,7 @@ public class CommandRunner {
     if (process !=null) {
       process.destroy();
       LOG.warning("Terminating command: " + command);
-      lastEvent = new CommandEvent(startTime, clock.instant(), CommandEvent.ENFORCED_TERMINATION);
+      lastEvent = new CommandEvent(startTime, endTime(), CommandEvent.ENFORCED_TERMINATION);
       process = null;
     }
   }
@@ -141,7 +141,7 @@ public class CommandRunner {
       try {
         int exitCode = process.exitValue();
         // If we didn't throw an exception the command must now be finished
-        lastEvent = new CommandEvent(startTime, clock.instant(), exitCode);
+        lastEvent = new CommandEvent(startTime, endTime(), exitCode);
         process = null;
         if (lastEvent.isSuccessful()) {
           LOG.info(String.format(
@@ -171,5 +171,14 @@ public class CommandRunner {
     Preconditions.checkState(process == null, "Cannot get last execution while command is running");  
     Preconditions.checkState(lastEvent != null, "Cannot get last execution before completion");
     return lastEvent;
+  }
+
+  /**
+   * Returns the current time to use as the end of an execution, never earlier than the start
+   * time even if the clock has stepped backwards.
+   */
+  private Instant endTime() {
+    Instant now = clock.instant();
+    return now.isBefore(startTime) ? startTime : now;
   }
 }

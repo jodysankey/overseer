@@ -34,7 +34,7 @@ abstract class ConnectionParser {
   protected final Lock readLock;
   protected final Lock writeLock;
 
-  private boolean closeRequested;
+  private volatile boolean closeRequested;
 
   public class UpgradeRequestedException extends Exception {
     private static final long serialVersionUID = 228774278790018938L;

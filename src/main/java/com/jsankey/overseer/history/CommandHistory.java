@@ -9,6 +9,7 @@ package com.jsankey.overseer.history;
 import java.io.Serializable;
 import java.util.AbstractCollection;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.logging.Logger;
@@ -76,19 +77,22 @@ public class CommandHistory extends AbstractCollection<CommandEvent> implements 
   }
 
   @Override
-  public int size() {
+  public synchronized int size() {
     return events.size();
   }
 
   /**
    * Returns the final {@link CommandEvent} in the history, or null if no events exist.
    */
-  public CommandEvent getLast() {
+  public synchronized CommandEvent getLast() {
     return events.isEmpty() ? null : events.getLast();
   }
 
+  /**
+   * Returns an iterator over a snapshot of the history.
+   */
   @Override
-  public Iterator<CommandEvent> iterator() {
-    return new ReadOnlyIterator<CommandEvent>(events.iterator());
+  public synchronized Iterator<CommandEvent> iterator() {
+    return new ReadOnlyIterator<CommandEvent>(new ArrayList<CommandEvent>(events).iterator());
   }
 }

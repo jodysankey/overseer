@@ -48,9 +48,9 @@ public class ExecutionHistory implements Serializable, Iterable<CommandHistory> 
   }
 
   /** Path in which we attempt to store and recover the execution history. */
-  private Optional<String> filePath;
+  private final Optional<String> filePath;
   /** Map of the {@link CommandHistory} lists for each command */
-  private ImmutableMap<String, CommandHistory> historyMap;
+  private final ImmutableMap<String, CommandHistory> historyMap;
   /** Cached calculated overall status */
   private HistoryStatus status;
   /** Cached calculated time of oldest last-start */
@@ -158,14 +158,14 @@ public class ExecutionHistory implements Serializable, Iterable<CommandHistory> 
   /**
    * Returns the overall status of command execution. See {@link HistoryStatus} for more details.
    */
-  public HistoryStatus getStatus() {
+  public synchronized HistoryStatus getStatus() {
     return status;
   }
 
   /**
    * Returns the oldest {@link Instant} at which the most recent execution of any command started.
    */
-  public Optional<Instant> getOldestStart() {
+  public synchronized Optional<Instant> getOldestStart() {
     return oldestStart;
   }
 
@@ -173,7 +173,7 @@ public class ExecutionHistory implements Serializable, Iterable<CommandHistory> 
    * Returns the most recent {@link Instant} of a failed execution, if any commands failed on their
    * most recent execution, or absent otherwise.
    */
-  public Optional<Instant> getNewestFailure() {
+  public synchronized Optional<Instant> getNewestFailure() {
     return newestFailure;
   }
 

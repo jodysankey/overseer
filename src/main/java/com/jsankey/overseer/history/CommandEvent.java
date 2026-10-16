@@ -37,7 +37,7 @@ public class CommandEvent implements Serializable {
    * @param exitCode the exit code returned upon completion.
    */
   public CommandEvent(Instant start, Instant end, int exitCode) {
-    Preconditions.checkArgument(end.isAfter(start));
+    Preconditions.checkArgument(!end.isBefore(start), "Event cannot end before it started");
     this.start = start;
     this.end = end;
     this.exitCode = exitCode;
