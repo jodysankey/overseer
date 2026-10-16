@@ -5,7 +5,7 @@
 #
 # Usage: overseer_check.py PORT_NUM
 #
-# Copyright Jody Sankey 2016
+# Copyright Jody Sankey 2016-2026
 #
 # This software may be modified and distributed under the terms of the MIT license.
 # See the LICENSE.md file for details.
