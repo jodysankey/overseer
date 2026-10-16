@@ -1,0 +1,21 @@
+[Unit]
+Description = Periodic and gated task execution daemon
+StartLimitIntervalSec = 60
+StartLimitBurst = 4
+
+[Service]
+Type = simple
+Restart = always
+# TODO(jody): Dynamically assign socket
+ExecStart = /usr/bin/overseer \
+     --command "unison %u -batch" \
+     --command "unison family -batch" \
+     --socket 4321 \
+     --ssid Racknet_inner \
+     --status_file /home/%u/.unison/overseer_unison.status \
+     --log_file /var/log/overseer_unison.log
+StandardOutput = null
+StandardError = null
+
+[Install]
+WantedBy = default.target

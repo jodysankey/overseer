@@ -15,7 +15,7 @@ last sync.
 The invocation I use is as follows
 
 ```
-/usr/bin/java -jar /use/local/bin/Overseerbundle.jar \
+/usr/bin/overseer \
   --command "unison jody -batch" \
   --command "unison family -batch" \
   --socket 4321 \
@@ -40,6 +40,8 @@ More invocation details are available using the `--help` flag.
   port to display status and trigger restarts
 * `overseer_check.py` is a simple python script that communicates with Overseer over a plaintext socket to display
   status. Since this is the only thing not using websockets it might not be available in the future
+* `deploy/build_deb.sh` rebuilds the application and packages it, the plasmoid, and an example systemd user unit
+  into `deploy/overseer_<version>_all.deb`
 * `plasmoid` contains a KDE Plasma 6 plasmoid to display status. This has both a compact form suitable for a toolbar and an
   expanded form showing more details about the outcome of each command and facilitating status. The port is again
   hardcoded
@@ -65,7 +67,6 @@ More invocation details are available using the `--help` flag.
 * Unit test coverage isn't complete
 * Plasmoid makefile isn't complete
 * Plasmoid and HTML should have a configuration to set the port
-* Proper packaging (e.g. Deb file) would be nice
 
 
 ## Future Plans

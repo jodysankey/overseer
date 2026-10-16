@@ -2,11 +2,39 @@ Still should do a decent amount of work here, particularly on
 CMake for the plasmoid.
 
 
+Debian Package Install
+======================
+
+Rebuild the application and plasmoid into a package:
+  deploy/build_deb.sh
+This creates deploy/overseer_<version>_all.deb.
+
+If overseer is already running, stop it:
+  systemctl --user stop overseer.service
+
+Install the package on the target machine:
+  sudo apt install ./overseer_<version>_all.deb
+
+On first install copy the example user unit, edit the commands and
+options, then enable it:
+  cp /usr/share/doc/overseer/examples/overseer.service ~/.config/systemd/user/
+  systemctl --user daemon-reload
+  systemctl --user enable --now overseer.service
+On upgrade just restart it:
+  systemctl --user restart overseer.service
+
+The plasmoid is installed for all users. If a per-user copy was
+previously installed with kpackagetool6, remove it so it doesn't hide
+the packaged one:
+  kpackagetool6 --type Plasma/Applet --remove com.jsankey.overseer.monitor
+Log out and back in (or restart plasmashell) to pick up a new version.
+
+
 Manual Install
 ==============
 
 On Kubuntu 16.04, first install the following packages:
-  libplasma (Plasma 6)
+  plasma-framework
   qml6-module-qtwebsockets
   gradle
 
