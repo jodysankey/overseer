@@ -36,7 +36,7 @@ public class WebConnectionParser extends ConnectionParser {
       + "Upgrade: websocket\r\n"
       + "Connection: Upgrade\r\n"
       + "Sec-WebSocket-Accept: %s\r\n\r\n";
-  private static final String WEBSOCKET_UPGRADE_FAILURE = "400 Bad Request\r\n\r\n";
+  private static final String WEBSOCKET_UPGRADE_FAILURE = "HTTP/1.1 400 Bad Request\r\n\r\n";
   private static final String WEBSOCKET_HASH_SUFFIX = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   private static final int MAX_SEND_LENGTH = (1 << 16);
 

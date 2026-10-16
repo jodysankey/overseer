@@ -29,7 +29,7 @@ public class SocketConnection implements Runnable, StatusListener {
 
   private final Socket socket;
   private final Executive executive;
-  @VisibleForTesting ConnectionParser parser;
+  @VisibleForTesting volatile ConnectionParser parser;
 
   /**
    * Constructs a new connection using the supplied socket.
@@ -86,21 +86,24 @@ public class SocketConnection implements Runnable, StatusListener {
 
   @Override
   public void receiveStatus(Status status) {
-    // Occasionally we'll null out the parser during an upgrade, if so just discard the update
-    if (parser != null) {
+    // Occasionally we'll null out the parser during an upgrade, if so just discard the update.
+    // Take a local copy since the connection thread may change the field at any time.
+    ConnectionParser currentParser = parser;
+    if (currentParser != null) {
       try {
-        Command.STATUS.execute(parser, executive);
+        Command.STATUS.execute(currentParser, executive);
       } catch (IOException e) {
         // If we fail once, we'll probably fail again. Shut the socket down so the executive
         // thread doesn't have to deal with this.
         LOG.warning(String.format("Exception receiving status in connection %s, closing socket",
-            parser.getSocketName(), e));
-        parser.initiateClose();
+            currentParser.getSocketName(), e));
+        currentParser.initiateClose();
       }
       if (status == Status.TERMINATED) {
-        LOG.info(String.format("Sending close on termination for %s", parser.getSocketName()));
+        LOG.info(String.format(
+            "Sending close on termination for %s", currentParser.getSocketName()));
         try {
-          Command.CLOSE.execute(parser, executive);
+          Command.CLOSE.execute(currentParser, executive);
         } catch (IOException e) {
           // Close exceptions are common if client initiated shutdown - ignore
         }

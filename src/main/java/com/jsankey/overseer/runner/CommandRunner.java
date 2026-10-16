@@ -47,9 +47,9 @@ public class CommandRunner {
   private CommandRunner(String command, Clock clock) {
     this.command = command;
     // TODO(jody): We accept a complete command string in the command line arguments but
-    // need to tokenize for starting the process. For now very crudely split at every space,
-    // could do something better than this when we need it.
-    String[] commandArray = command.split("\\s");
+    // need to tokenize for starting the process. For now very crudely split at each run of
+    // whitespace, could do something better than this when we need it.
+    String[] commandArray = command.trim().split("\\s+");
     this.clock = clock;
 
     ProcessBuilder builder = new ProcessBuilder(commandArray)

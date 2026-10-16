@@ -7,6 +7,7 @@
 package com.jsankey.overseer.checks;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.logging.Logger;
@@ -22,6 +23,8 @@ public class WifiStatusChecker {
 
   /** Logger for the current class. */
   private static final Logger LOG = Logger.getLogger(WifiStatusChecker.class.getCanonicalName());
+  /** The bit bucket as a {@link File} for convenience of redirects. */
+  private static final File DEVNULL = new File("/dev/null");
 
   private final String targetSsid;
   private final String searchString;
@@ -47,16 +50,21 @@ public class WifiStatusChecker {
   public boolean connected() {
     try {
       Process wifiStatus = createProcess();
-      BufferedReader reader =
-          new BufferedReader(new InputStreamReader(wifiStatus.getInputStream())); 
-      int exitCode = wifiStatus.waitFor();
-      if (exitCode == 0) {
+      // Read all output before waiting for the process to exit, otherwise a full pipe buffer
+      // could block the process forever.
+      boolean found = false;
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(wifiStatus.getInputStream()))) {
         String line;
         while ((line = reader.readLine()) != null) {
           if (line.contains(searchString)) {
-            return true;
+            found = true;
           }
         }
+      }
+      int exitCode = wifiStatus.waitFor();
+      if (exitCode == 0) {
+        return found;
       } else {
         LOG.warning(String.format("Get wifi status failed with error code %d", exitCode));
       }
@@ -81,6 +89,10 @@ public class WifiStatusChecker {
    */
   @VisibleForTesting
   Process createProcess() throws IOException {
-    return new ProcessBuilder("iwconfig").start();
+    // Only stdout is used, so avoid creating (and leaking) pipes for stdin and stderr.
+    return new ProcessBuilder("iwconfig")
+        .redirectInput(DEVNULL)
+        .redirectError(DEVNULL)
+        .start();
   }
 }

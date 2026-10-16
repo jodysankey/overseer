@@ -32,7 +32,8 @@ class TextConnectionParser extends ConnectionParser {
       throw new UpgradeRequestedException();
     } else {
       try {
-        return Command.valueOf(line.toUpperCase());
+        // Trim to tolerate CRLF line endings (e.g. from telnet) and stray whitespace.
+        return Command.valueOf(line.trim().toUpperCase());
       } catch (IllegalArgumentException e) {
         LOG.info(String.format("Unknown command on connection %s: %s", getSocketName(), line));
       }

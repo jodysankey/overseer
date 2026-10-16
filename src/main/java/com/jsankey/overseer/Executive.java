@@ -249,7 +249,11 @@ public class Executive {
   private synchronized void sendStatus() {
     Status status = getStatus();
     for (StatusListener listener : listeners) {
-      listener.receiveStatus(status);
+      try {
+        listener.receiveStatus(status);
+      } catch (RuntimeException e) {
+        LOG.log(Level.WARNING, "Exception sending status to listener", e);
+      }
     }
   }
 
@@ -271,10 +275,12 @@ public class Executive {
       } catch (Exception e) {
         LOG.log(Level.SEVERE, "Fatal exception", e);
       }
-      // Send our final status out to any remaining listeners
-      sendStatus();
-      //Communicate back to the parent that we stopped by clearing its reference.
-      runnerThread = null;
+      // Communicate back to the parent that we stopped by clearing its reference, then send our
+      // final status out to any remaining listeners.
+      synchronized (Executive.this) {
+        runnerThread = null;
+        sendStatus();
+      }
     }
 
     /**
