@@ -13,6 +13,10 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.Iterator;
 import java.util.logging.Level;
@@ -211,15 +215,24 @@ public class ExecutionHistory implements Serializable, Iterable<CommandHistory> 
   }
 
   /**
-   * Write the current object out to the history filePath.
+   * Atomically writes the current object out to the history filePath.
    *
    * <p>Preconditions: {@code filePath} has been specified.
    */
   private synchronized void writeToFile() throws IOException {
     Preconditions.checkArgument(filePath.isPresent());
-    try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filePath.get()))) {
+    // Write to a temporary file in the same directory then atomically rename it over the target,
+    // so a crash part way through cannot leave a corrupt history file.
+    Path target = Paths.get(filePath.get());
+    Path temp = target.resolveSibling(target.getFileName() + ".tmp");
+    try (FileOutputStream fos = new FileOutputStream(temp.toFile());
+        ObjectOutputStream oos = new ObjectOutputStream(fos)) {
       oos.writeObject(this);
+      oos.flush();
+      // Ensure the data is on disk before the rename makes it visible.
+      fos.getFD().sync();
     }
+    Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
   }
 
   /**

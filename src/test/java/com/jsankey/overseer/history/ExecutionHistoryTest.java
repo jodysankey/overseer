@@ -7,7 +7,10 @@
 package com.jsankey.overseer.history;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.fail;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
@@ -120,4 +123,49 @@ public class ExecutionHistoryTest {
     return new ExecutionHistory(Optional.<String>absent(), ImmutableList.of(COMMAND_1, COMMAND_2));
   }
 
+  @Test
+  public void testFileWrittenWithoutTemporaryLeftover() throws Exception {
+    Path statusPath = Paths.get(tempFolder.getRoot().getAbsolutePath(), "test-history.cfg");
+    ExecutionHistory history =
+        new ExecutionHistory(Optional.of(statusPath.toString()), ImmutableList.of(COMMAND_1));
+    history.recordEvent(COMMAND_1, T1, T2, SUCCESS_CODE);
+    history.recordEvent(COMMAND_1, T3, T4, SUCCESS_CODE);
+
+    assertThat(Files.exists(statusPath)).isTrue();
+    assertThat(Files.exists(Paths.get(statusPath + ".tmp"))).isFalse();
+  }
+
+  @Test
+  public void testCorruptFileIgnored() throws Exception {
+    Path statusPath = Paths.get(tempFolder.getRoot().getAbsolutePath(), "test-history.cfg");
+    Files.write(statusPath, "this is not a serialized history".getBytes(StandardCharsets.UTF_8));
+
+    ExecutionHistory history =
+        new ExecutionHistory(Optional.of(statusPath.toString()), ImmutableList.of(COMMAND_1));
+    assertThat(history.getStatus()).isEqualTo(HistoryStatus.NOT_ALL_RUN);
+    assertThat(history.getCommandHistory(COMMAND_1)).isEmpty();
+
+    // The next event should replace the corrupt file with a valid one.
+    history.recordEvent(COMMAND_1, T1, T2, SUCCESS_CODE);
+    ExecutionHistory restored =
+        new ExecutionHistory(Optional.of(statusPath.toString()), ImmutableList.of(COMMAND_1));
+    assertThat(restored.getStatus()).isEqualTo(HistoryStatus.ALL_PASSED);
+  }
+
+  @Test
+  public void testUnknownCommand() {
+    ExecutionHistory history = createOneCommandHistory();
+    try {
+      history.getCommandHistory(COMMAND_2);
+      fail();
+    } catch (NullPointerException e) {
+      // Expected
+    }
+    try {
+      history.recordEvent(COMMAND_2, T1, T2, SUCCESS_CODE);
+      fail();
+    } catch (NullPointerException e) {
+      // Expected
+    }
+  }
 }

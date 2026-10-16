@@ -46,6 +46,13 @@ public class SocketConnectionTest {
   private static final int EXECUTION_TIME_MILLIS = 1000;
 
   private static final String TEST_WEBSOCKET_KEY = "r7oPJjbmnmKEZdkzqALUrQ==";
+  private static final byte[] TEST_MASK = {(byte) 0x37, (byte) 0xfa, (byte) 0x21, (byte) 0x3d};
+  private static final int OPCODE_TEXT = 0x1;
+  private static final int OPCODE_CLOSE = 0x8;
+  private static final int OPCODE_PING = 0x9;
+  private static final int OPCODE_PONG = 0xA;
+  private static final String EXPECTED_STATUS_JSON =
+      "{\"status\":\"BLOCKED_ON_WIFI\",\"last_start_ms\":\"12345678\"}";
   // Accept value for TEST_WEBSOCKET_KEY as defined in RFC 6455 section 4.2.2.
   private static final String EXPECTED_UPGRADE_RESPONSE =
       "HTTP/1.1 101 Switching Protocols\r\n"
@@ -112,6 +119,15 @@ public class SocketConnectionTest {
     verify(mockExecutive).getHistory();
     assertThat(outputStream.toString()).isEqualTo(
         "{\"status\":\"BLOCKED_ON_WIFI\",\"last_start_ms\":\"12345678\"}\n");
+  }
+
+  @Test
+  public void testStatusWithCrLf() throws Exception {
+    setTestInput("status\r\n");
+    startTestObject(RunMode.REQUEST_CLOSE);
+    verify(mockExecutive).getStatus();
+    verify(mockExecutive).getHistory();
+    assertThat(outputStream.toString()).isEqualTo(EXPECTED_STATUS_JSON + "\n");
   }
 
   @Test
@@ -212,6 +228,30 @@ public class SocketConnectionTest {
   }
 
   @Test
+  public void testWebSocketCommandsAndPing() throws Exception {
+    ByteArrayOutputStream input = new ByteArrayOutputStream();
+    input.write(webSocketRequest("Sec-WebSocket-Key: " + TEST_WEBSOCKET_KEY + "\r\n")
+        .getBytes(StandardCharsets.US_ASCII));
+    input.write(maskedFrame(OPCODE_TEXT, "status"));
+    input.write(maskedFrame(OPCODE_PING, "hi"));
+    input.write(maskedFrame(OPCODE_CLOSE, ""));
+    setTestInput(input.toByteArray());
+    startTestObject(RunMode.EXPECT_SELF_CLOSE);
+    verify(mockExecutive).getStatus();
+    verify(mockExecutive).getHistory();
+
+    // Expect the upgrade response, the status as a text frame, a pong echoing the ping data,
+    // and finally a close frame in response to the client's close.
+    ByteArrayOutputStream expected = new ByteArrayOutputStream();
+    expected.write(EXPECTED_UPGRADE_RESPONSE.getBytes(StandardCharsets.US_ASCII));
+    expected.write(unmaskedFrame(OPCODE_TEXT, EXPECTED_STATUS_JSON));
+    expected.write(unmaskedFrame(OPCODE_PONG, "hi"));
+    expected.write(unmaskedFrame(OPCODE_CLOSE, ""));
+    assertThat(outputStream.toByteArray()).isEqualTo(expected.toByteArray());
+    verify(mockSocket).close();
+  }
+
+  @Test
   public void testWebSocketUpgradeHeaderCaseInsensitive() throws Exception {
     setTestInput(webSocketRequest("sec-websocket-key:  " + TEST_WEBSOCKET_KEY + " \r\n"));
     startTestObject(RunMode.LEAVE_RUNNING);
@@ -251,8 +291,35 @@ public class SocketConnectionTest {
   }
 
   private void setTestInput(String input) throws IOException {
-    InputStream inputStream = new ByteArrayInputStream(input.getBytes());
+    setTestInput(input.getBytes(StandardCharsets.US_ASCII));
+  }
+
+  private void setTestInput(byte[] input) throws IOException {
+    InputStream inputStream = new ByteArrayInputStream(input);
     when(mockSocket.getInputStream()).thenReturn(inputStream);
+  }
+
+  /** Returns a client-to-server (and hence masked) websocket frame with the supplied opcode. */
+  private static byte[] maskedFrame(int opCode, String payload) {
+    byte[] data = payload.getBytes(StandardCharsets.UTF_8);
+    ByteArrayOutputStream frame = new ByteArrayOutputStream();
+    frame.write(0x80 | opCode);
+    frame.write(0x80 | data.length);
+    frame.write(TEST_MASK, 0, TEST_MASK.length);
+    for (int i = 0; i < data.length; i++) {
+      frame.write(data[i] ^ TEST_MASK[i % 4]);
+    }
+    return frame.toByteArray();
+  }
+
+  /** Returns a server-to-client (and hence unmasked) websocket frame with the supplied opcode. */
+  private static byte[] unmaskedFrame(int opCode, String payload) {
+    byte[] data = payload.getBytes(StandardCharsets.UTF_8);
+    ByteArrayOutputStream frame = new ByteArrayOutputStream();
+    frame.write(0x80 | opCode);
+    frame.write(data.length);
+    frame.write(data, 0, data.length);
+    return frame.toByteArray();
   }
 
   private void startTestObject(RunMode mode) throws IOException, InterruptedException {

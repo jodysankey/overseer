@@ -86,4 +86,44 @@ public class CommandRunnerTest {
     assertThat(lastExecution.getExitCode()).isEqualTo(CommandEvent.ENFORCED_TERMINATION);
     assertThat(lastExecution.getStart()).isEqualTo(T1);
   }
+
+  @Test
+  public void testCommandCouldNotStart() throws Exception {
+    when(mockClock.instant()).thenReturn(T1, T2);
+    testObject = CommandRunner.forCommand("/nonexistent/program --flag", mockClock);
+    testObject.start();
+
+    assertThat(testObject.isRunning()).isFalse();
+    CommandEvent lastExecution = testObject.getLastExecution();
+    assertThat(lastExecution.getExitCode()).isEqualTo(CommandEvent.COULD_NOT_START);
+    assertThat(lastExecution.getStart()).isEqualTo(T1);
+    assertThat(lastExecution.getEnd()).isEqualTo(T2);
+  }
+
+  @Test
+  public void testExtraWhitespaceIgnored() throws Exception {
+    when(mockClock.instant()).thenReturn(T1, T2);
+    testObject = CommandRunner.forCommand("  test   a  =  a  ", mockClock);
+    testObject.start();
+
+    // Allow time for test to complete
+    TimeUnit.MILLISECONDS.sleep(500);
+    assertThat(testObject.isRunning()).isFalse();
+    assertThat(testObject.getLastExecution().getExitCode()).isEqualTo(0);
+  }
+
+  @Test
+  public void testClockSteppingBackwards() throws Exception {
+    when(mockClock.instant()).thenReturn(T2, T1);
+    testObject.start();
+
+    // Allow time for false to complete
+    TimeUnit.MILLISECONDS.sleep(500);
+    assertThat(testObject.isRunning()).isFalse();
+
+    // End time should be clamped to the start rather than the event being rejected.
+    CommandEvent lastExecution = testObject.getLastExecution();
+    assertThat(lastExecution.getStart()).isEqualTo(T2);
+    assertThat(lastExecution.getEnd()).isEqualTo(T2);
+  }
 }
