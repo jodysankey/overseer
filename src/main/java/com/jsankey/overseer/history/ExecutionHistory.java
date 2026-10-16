@@ -41,7 +41,7 @@ public class ExecutionHistory implements Serializable, Iterable<CommandHistory> 
   public enum HistoryStatus {
     /** All commands have successfully completed on their last execution */
     ALL_PASSED,
-    /** Some commands have not yet executed (but not have failed on their last execution) */
+    /** Some commands have not yet executed (but none have failed on their last execution) */
     NOT_ALL_RUN,
     /** One or more commands failed on their last execution */
     FAILED
@@ -85,7 +85,7 @@ public class ExecutionHistory implements Serializable, Iterable<CommandHistory> 
             historyMap.get(command).addAll(recovered.historyMap.get(command));
           } else {
             LOG.info(String.format(
-                "Could not find command to restore from previous execution history: ", command));
+                "Could not find command to restore from previous execution history: %s", command));
           }
         }
       } catch (FileNotFoundException e) {

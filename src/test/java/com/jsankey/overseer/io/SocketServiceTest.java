@@ -25,7 +25,7 @@ public class SocketServiceTest {
 
   private static final int TEST_PORT = 9999;
   // Time to wait after sending a command before receiving results. Note this is
-  // longer than the sleep in the socket command procesor
+  // longer than the sleep in the socket command processor
   private static final long RESPONSE_DELAY_MILLIS = 300L;
 
   private Executive mockExecutive;

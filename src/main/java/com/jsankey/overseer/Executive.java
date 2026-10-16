@@ -31,11 +31,9 @@ import com.jsankey.overseer.runner.CommandRunner;
  * based on a configuration, recording the outcomes of these executions, and calculating
  * an overall state for the system.
  * 
- * <p>The class creates its own thread to do the work, and may safely be called
+ * <p>The work is performed either on a new thread ({@link #beginOnNewThread}) or on the
+ * caller's thread ({@link #beginOnCurrentThread}), and the class may safely be called
  * from other threads.
- * 
- * <p>TODO: Actually since we're not going to be able to run as a true daemon it would be more
- * efficient to use the main thread for this work rather than spawning a new one.
  *
  * @author Jody
  */
@@ -56,7 +54,7 @@ public class Executive {
     RUNNING,
     /** The most recent run was successful, and we're waiting until it's time to run again */
     IDLE,
-    /** The most recent run was successful, but we're not on the required wifi SSID to run again */
+    /** We're waiting to connect to the required wifi SSID before running the next command */
     BLOCKED_ON_WIFI,
     /** The most recent run included one or more failures */
     FAILURE,
@@ -148,10 +146,11 @@ public class Executive {
    * Returns the command that is currently running, if any.
    */
   public synchronized Optional<String> getActiveCommand() {
-    if (activeCommand == null) {
+    CommandRunner command = activeCommand;
+    if (command == null) {
       return Optional.absent();
     } else {
-      return Optional.of(activeCommand.toString());
+      return Optional.of(command.getCommand());
     }
   }
 
@@ -201,7 +200,7 @@ public class Executive {
    */
   public synchronized void unregisterListener(StatusListener listener) {
     Preconditions.checkState(
-        listeners.contains(listener), "Cannot unregister a listener more than once");
+        listeners.contains(listener), "Cannot unregister a listener that is not registered");
     listeners.remove(listener);
   }
 
@@ -217,14 +216,19 @@ public class Executive {
     Preconditions.checkState(thread != null, "Cannot terminate already terminated executive");
     LOG.info("Starting termination, waiting for runner to stop");
     thread.interrupt();
+    boolean interrupted = false;
     while (runnerThread != null) {
       try {
         Thread.sleep(COMMAND_COMPLETION_CHECK_MILLIS);
       } catch (InterruptedException e) {
-        // Nothing should interrupt the kill thread.
+        // Nothing should interrupt the kill thread. Remember the interrupt and restore it once
+        // we're done; restoring it now would make every subsequent sleep throw immediately.
         LOG.warning("Received interrupt on the termination thread, ignoring");
-        Thread.currentThread().interrupt();
+        interrupted = true;
       }
+    }
+    if (interrupted) {
+      Thread.currentThread().interrupt();
     }
     LOG.info("Successfully finished termination");
   }

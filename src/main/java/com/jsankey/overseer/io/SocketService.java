@@ -22,9 +22,12 @@ import com.jsankey.overseer.Executive;
  */
 public class SocketService {
 
-  private static final int THREAD_LIMIT = 4;
+  /** Maximum number of simultaneous connections. Further connections wait for a free thread. */
+  private static final int CONNECTION_LIMIT = 4;
+  /** Total threads in the pool: one per connection plus one for the {@link SocketAcceptor}. */
+  private static final int THREAD_LIMIT = CONNECTION_LIMIT + 1;
 
-  private static final Logger LOG = Logger.getLogger(SocketConnection.class.getCanonicalName());
+  private static final Logger LOG = Logger.getLogger(SocketService.class.getCanonicalName());
 
   private final ServerSocket serverSocket;
   private final ExecutorService threadPool;
@@ -66,14 +69,16 @@ public class SocketService {
     @Override
     public void run() {
       LOG.info("Starting server socket listening on port " + serverSocket.getLocalPort());
-      while (true) {
+      while (!serverSocket.isClosed()) {
         try {
           SocketConnection connection = SocketConnection.from(serverSocket.accept(), executive);
           threadPool.execute(connection);
         } catch (IOException|JsonException e) {
-          // Connection already logged the problem, just wait for another.
+          // Either the server socket was closed during shutdown, in which case the loop will exit,
+          // or the connection already logged the problem, so just wait for another.
         }
       }
+      LOG.info("Server socket closed, no longer accepting connections");
     }
   }
 }

@@ -121,7 +121,7 @@ public class CommandRunner {
    * Terminates execution of the command if it is still running.
    */
   public synchronized void terminate() {
-    if (process !=null) {
+    if (process != null) {
       process.destroy();
       LOG.warning("Terminating command: " + command);
       lastEvent = new CommandEvent(startTime, endTime(), CommandEvent.ENFORCED_TERMINATION);
@@ -163,9 +163,11 @@ public class CommandRunner {
   /**
    * Returns a {@link CommandEvent} representing the most recent completed execution.
    * 
-   * <p>Preconditions:</p>
-   * <ul>The command is not currently executing</ul>
-   * <ul>One or more executions have been performed</ul>
+   * <p>Preconditions:
+   * <ul>
+   *   <li>The command is not currently executing
+   *   <li>One or more executions have been performed
+   * </ul>
    */
   public synchronized CommandEvent getLastExecution() {
     Preconditions.checkState(process == null, "Cannot get last execution while command is running");  

@@ -55,7 +55,7 @@ abstract class ConnectionParser {
   }
 
   /**
-   * Returns the hostname and port of the remote socket.
+   * Returns the IP address and port of the remote socket.
    */
   public String getSocketName() {
     return String.format("%s:%d", socket.getInetAddress().getHostAddress(), socket.getPort());
@@ -96,7 +96,7 @@ abstract class ConnectionParser {
    */
   protected String readToLf() throws InterruptedException, IOException {
     ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-    // Hold our  own additional lock to ensure we receive a contiguous line
+    // Hold our own additional lock to ensure we receive a contiguous line
     readLock.lock();
     try {
       while (true) {

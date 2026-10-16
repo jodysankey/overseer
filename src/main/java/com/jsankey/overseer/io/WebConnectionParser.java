@@ -147,11 +147,11 @@ public class WebConnectionParser extends ConnectionParser {
       case CLOSE:
         return Command.CLOSE;
       case TEXT:
+        String text = new String(packet.data);
         try {
-          return Command.valueOf(new String(packet.data).toUpperCase());
+          return Command.valueOf(text.toUpperCase());
         } catch (IllegalArgumentException e) {
-          LOG.info(
-              String.format("Unknown command on web socket %s: %s", getSocketName(), packet.data));
+          LOG.info(String.format("Unknown command on web socket %s: %s", getSocketName(), text));
         }
     }
     return null;

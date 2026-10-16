@@ -95,8 +95,9 @@ public class SocketConnection implements Runnable, StatusListener {
       } catch (IOException e) {
         // If we fail once, we'll probably fail again. Shut the socket down so the executive
         // thread doesn't have to deal with this.
-        LOG.warning(String.format("Exception receiving status in connection %s, closing socket",
-            currentParser.getSocketName(), e));
+        LOG.log(Level.WARNING, String.format(
+            "Exception receiving status in connection %s, closing socket",
+            currentParser.getSocketName()), e);
         currentParser.initiateClose();
       }
       if (status == Status.TERMINATED) {
@@ -125,7 +126,8 @@ public class SocketConnection implements Runnable, StatusListener {
     } catch (InterruptedException|IOException e) {
       // Interrupted exception shouldn't happen during upgrade since the parser isn't handling any
       // traffic yet. In the case of an IO exception just fallback to the old parser.
-      LOG.warning(String.format("Exception upgrading socket %s", oldParser.getSocketName(), e));
+      LOG.log(Level.WARNING,
+          String.format("Exception upgrading socket %s", oldParser.getSocketName()), e);
       parser = oldParser;
     }
   }

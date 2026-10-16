@@ -30,7 +30,7 @@ public class OverseerApplication {
 
   private final Executive exec;
   private final Optional<SocketService> socketService;
-  private static final Logger LOG = Logger.getLogger(Executive.class.getCanonicalName());
+  private static final Logger LOG = Logger.getLogger(OverseerApplication.class.getCanonicalName());
 
   public static void main(String[] args) throws IOException {
     Configuration config = parseConfiguration(args);

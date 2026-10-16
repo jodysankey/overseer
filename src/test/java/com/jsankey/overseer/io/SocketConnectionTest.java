@@ -177,7 +177,7 @@ public class SocketConnectionTest {
 
   @Test
   public void testWebSocketUpgrade() throws Exception {
-    setTestInput("GET /overseer HTTP/1.1\r"
+    setTestInput("GET /overseer HTTP/1.1\r\n"
         + "Host: localhost:4321\r\n"
         + "Connection: Upgrade\r\n"
         + "Pragma: no-cache\r\n"

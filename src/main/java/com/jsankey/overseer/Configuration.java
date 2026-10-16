@@ -110,7 +110,7 @@ public class Configuration {
    */
   public static void printVersionOn(OutputStream sink) throws IOException {
     OutputStreamWriter writer = new OutputStreamWriter(sink);
-    writer.write((String.format("  %s version %s%n", APP_NAME, VERSION_STRING)));
+    writer.write(String.format("  %s version %s%n", APP_NAME, VERSION_STRING));
     writer.flush();
   }
 
