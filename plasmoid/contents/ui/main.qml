@@ -6,13 +6,12 @@
   * This software may be modified and distributed under the terms of the MIT license.
   * See the LICENSE.md file for details.
   */
-import QtQml 2.2
-import QtQuick 2.0
-import QtWebSockets 1.0
-import QtQuick.Controls 1.4
-import org.kde.plasma.plasmoid 2.0
+import QtQml
+import QtQuick
+import org.kde.plasma.plasmoid
+import org.kde.plasma.core as PlasmaCore
 
-Item {
+PlasmoidItem {
     id: root
 
     ListModel {
@@ -24,7 +23,7 @@ Item {
         id: statusModel
         property string age: ""
         property string color: "LightBlue"
-        property var kStatusMap: {
+        property var kStatusMap: ({
             'CONNECTED': 'Gold',
             'RUNNING': 'Gold',
             'IDLE': 'LightGreen',
@@ -32,7 +31,7 @@ Item {
             'BLOCKED_ON_WIFI': 'Grey',
             'NOT_CONNECTED': 'DeepPink',
             'DISCONNECTED': 'DeepPink'
-        }
+        })
 
         /**
          * Updates the UI text based on the current socket state
@@ -41,7 +40,7 @@ Item {
             if (!socket.lastRunMs) {
                 age = "?";
             } else {
-                // If we do know the last run, display elapsed time since then 
+                // If we do know the last run, display elapsed time since then
                 // in most significant time unit
                 var delta_sec = (new Date().getTime() - socket.lastRunMs) / 1000;
                 if (delta_sec < 60) {
@@ -83,17 +82,18 @@ Item {
         onStatusChange: statusModel.update()
     }
 
-    Plasmoid.backgroundHints: "NoBackground";
-    Plasmoid.preferredRepresentation: Plasmoid.compactRepresentation
+    Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
+    preferredRepresentation: compactRepresentation
 
-    Plasmoid.toolTipMainText: socket.status
-    Plasmoid.toolTipSubText: "Last Run: " + socket.lastRunString
+    toolTipMainText: socket.status
+    toolTipSubText: "Last Run: " + socket.lastRunString
 
-    Plasmoid.compactRepresentation: CompactRepresentation {
+    compactRepresentation: CompactRepresentation {
         text: statusModel.age
         color: statusModel.color
+        onClicked: root.expanded = !root.expanded
     }
-    Plasmoid.fullRepresentation: FullRepresentation {
+    fullRepresentation: FullRepresentation {
         status: socket.status
         lastRun: socket.lastRunString
         version: socket.version

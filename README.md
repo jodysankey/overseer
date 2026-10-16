@@ -7,7 +7,7 @@ the success or failure of those tasks over a WebSocket interface. Some functiona
 I've only tested on Linux.
 
 Specifically I use it to run a couple of different [unison](https://www.cis.upenn.edu/~bcpierce/unison/)
-synchronization commands periodically while I'm connected to my home network. There is a KDE5 plasmoid I leave
+synchronization commands periodically while I'm connected to my home network. There is a KDE Plasma 6 plasmoid I leave
 in a toolbar to show the time since the last execution and the outcome of that execution, and to trigger a
 restart if necessary. This makes it easy to keep files synchronized continually, and to verify the age of the
 last sync. 
@@ -40,7 +40,7 @@ More invocation details are available using the `--help` flag.
   port to display status and trigger restarts
 * `overseer_check.py` is a simple python script that communicates with Overseer over a plaintext socket to display
   status. Since this is the only thing not using websockets it might not be available in the future
-* `plasmoid` contains a KDE5 plasmoid to display status. This has both a compact form suitable for a toolbar and an
+* `plasmoid` contains a KDE Plasma 6 plasmoid to display status. This has both a compact form suitable for a toolbar and an
   expanded form showing more details about the outcome of each command and facilitating status. The port is again
   hardcoded
 

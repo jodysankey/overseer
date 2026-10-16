@@ -6,9 +6,9 @@
   * This software may be modified and distributed under the terms of the MIT license.
   * See the LICENSE.md file for details.
   */
-import QtQml 2.2
-import QtQuick 2.0
-import QtWebSockets 1.0
+import QtQml
+import QtQuick
+import QtWebSockets
 
 Item { 
     property var lastRunMs: null
@@ -91,7 +91,7 @@ Item {
         id: socket
         // TODO(jody): Add a configuration page for port to avoid hardcoding.
         url: "ws://localhost:4321/overseer"
-        onTextMessageReceived: {
+        onTextMessageReceived: function(message) {
             internal.receivePacket(message)
         }
         onStatusChanged: 

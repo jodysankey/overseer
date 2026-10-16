@@ -1,0 +1,20 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "software@jsankey.com",
+                "Name": "Jody Sankey"
+            }
+        ],
+        "Category": "Utilities",
+        "Description": "Status monitor for Overseer execution service",
+        "Icon": "utilities-system-monitor",
+        "Id": "com.jsankey.overseer.monitor",
+        "License": "MIT",
+        "Name": "OverseerMonitor",
+        "Version": "0.4",
+        "Website": ""
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

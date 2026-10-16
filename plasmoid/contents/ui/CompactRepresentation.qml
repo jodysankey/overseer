@@ -7,20 +7,21 @@
   * See the LICENSE.md file for details.
   */
 
-import QtQml 2.2
-import QtQuick 2.0
-import QtQuick.Controls 1.4
-import QtQuick.Layouts 1.1
-import org.kde.plasma.plasmoid 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
+import QtQml
+import QtQuick
+import QtQuick.Layouts
+import org.kde.plasma.plasmoid
+import org.kde.plasma.core as PlasmaCore
+import org.kde.kirigami as Kirigami
 
 Item {
     id:root
     property string text: ""
     property string color: "LightBlue"
+    signal clicked()
 
-    Layout.minimumWidth: plasmoid.formFactor != PlasmaCore.Types.Vertical ? root.height : units.gridUnit
-    Layout.minimumHeight: plasmoid.formFactor == PlasmaCore.Types.Vertical ? root.width : units.gridUnit
+    Layout.minimumWidth: Plasmoid.formFactor != PlasmaCore.Types.Vertical ? root.height : Kirigami.Units.gridUnit
+    Layout.minimumHeight: Plasmoid.formFactor == PlasmaCore.Types.Vertical ? root.width : Kirigami.Units.gridUnit
 
     Rectangle {
         anchors {
@@ -43,7 +44,7 @@ Item {
         }
         MouseArea {
             anchors.fill: parent
-            onClicked: plasmoid.expanded = !plasmoid.expanded
+            onClicked: root.clicked()
         }
     }
     Text {
