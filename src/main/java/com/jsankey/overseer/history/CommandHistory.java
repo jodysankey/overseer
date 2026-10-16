@@ -37,7 +37,7 @@ public class CommandHistory extends AbstractCollection<CommandEvent> implements 
   /** The command whose history we store. */
   private final String command;
 
-  /** Queue of {@link ExecutionEvent} objects for each execution. */
+  /** Queue of {@link CommandEvent} objects for each execution. */
   private final Deque<CommandEvent> events;
 
   /**

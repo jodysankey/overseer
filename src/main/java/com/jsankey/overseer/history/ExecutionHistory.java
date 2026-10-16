@@ -49,7 +49,7 @@ public class ExecutionHistory implements Serializable, Iterable<CommandHistory> 
 
   /** Path in which we attempt to store and recover the execution history. */
   private Optional<String> filePath;
-  /** Map of the {@link ExecutionEvent} lists for each command */
+  /** Map of the {@link CommandHistory} lists for each command */
   private ImmutableMap<String, CommandHistory> historyMap;
   /** Cached calculated overall status */
   private HistoryStatus status;
@@ -62,7 +62,7 @@ public class ExecutionHistory implements Serializable, Iterable<CommandHistory> 
    * Constructs a new instance from the supplied status file and commands, attempting to initialize
    * from the status file references if possible.
    *
-   * @param filePath the path in which a config file should be stored
+   * @param filePath the path in which a status file should be stored
    * @param commands an {@link ImmutableList} of the commands whose history will be tracked
    */
   @VisibleForTesting
@@ -178,7 +178,7 @@ public class ExecutionHistory implements Serializable, Iterable<CommandHistory> 
   }
 
   /**
-   * Recalculates the {@code status} and {@code statusTime} fields.
+   * Recalculates the {@code status}, {@code oldestStart}, and {@code newestFailure} fields.
    */
   private synchronized void recalculateSummaryState() {
     Instant newestFailure = Instant.MIN;
@@ -223,8 +223,8 @@ public class ExecutionHistory implements Serializable, Iterable<CommandHistory> 
   }
 
   /**
-   * Reads a new object from the history filePath in the current object. Note that the returned
-   * object will not have its transient fields populated so should not be made available externally.
+   * Reads a new object from the history filePath. Note that the returned object is only used
+   * to merge history into the current object and should not be made available externally.
    *
    * <p>Preconditions: {@code filePath} has been specified.
    *

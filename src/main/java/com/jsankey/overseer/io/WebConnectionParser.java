@@ -237,8 +237,7 @@ public class WebConnectionParser extends ConnectionParser {
   /**
    * Write a WebSocket packet to the socket.
    *
-   * @throws InterruptedException if close is requested
-   * @throws IOException if an IOError occurs or EOF is reached
+   * @throws IOException if an IOError occurs
    */
   private void writePacket(Packet packet) throws IOException {
     ByteArrayOutputStream buffer = new ByteArrayOutputStream();

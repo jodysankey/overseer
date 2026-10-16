@@ -55,6 +55,8 @@ class JsonSocket(object):
   
 def _formatEpoch(millis): 
   """Returns a nicely formatted string for a supplied epoch offset."""
+  if millis == 'NONE':
+    return 'Never'
   return datetime.fromtimestamp(int(millis) / 1000.0).strftime('%Y-%m-%d %H:%M:%S')
   
 
@@ -62,22 +64,27 @@ if __name__ == '__main__':
   if len(sys.argv) !=2:
     print('Please supply port as the only argument')
   else:
-    sock = JsonSocket(sys.argv[1])
     try:
-      status = sock.command('status')
-      history = sock.command('history')
-      sock.send('close')
-    finally:
-      sock.close()
-    print(status['status'])
-    print('Last run: ' + _formatEpoch(status['last_start_ms']))
-    print('')
-    for command in history:
-      print('Command: ' + command['command'])
-      for run in reversed(command['executions']):
-        print("    {} ({:0.1f} sec) Exit:{}".format(
-            _formatEpoch(run['start_ms']),
-            (int(run['end_ms']) - int(run['start_ms'])) / 1000.0,
-            run['exit_code']))
+      sock = JsonSocket(sys.argv[1])
+    except ConnectionRefusedError:
+      print('Could not connect to an overseer server on port {}. '
+            'Is it running?'.format(sys.argv[1]))
+    else:
+      try:
+        status = sock.command('status')
+        history = sock.command('history')
+        sock.send('close')
+      finally:
+        sock.close()
+      print(status['status'])
+      print('Last run: ' + _formatEpoch(status['last_start_ms']))
+      print('')
+      for command in history:
+        print('Command: ' + command['command'])
+        for run in reversed(command['executions']):
+          print("    {} ({:0.1f} sec) Exit:{}".format(
+              _formatEpoch(run['start_ms']),
+              (int(run['end_ms']) - int(run['start_ms'])) / 1000.0,
+              run['exit_code']))
   input("\nPress Enter to continue...")
 

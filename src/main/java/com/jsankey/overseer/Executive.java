@@ -28,7 +28,7 @@ import com.jsankey.overseer.runner.CommandRunner;
 
 /**
  * Master class that handles running each command at an appropriate time and
- * based on a configuration, ecording the outcomes of these executions, and calculating
+ * based on a configuration, recording the outcomes of these executions, and calculating
  * an overall state for the system.
  * 
  * <p>The class creates its own thread to do the work, and may safely be called
@@ -157,7 +157,7 @@ public class Executive {
    * Begins execution for the first time, starting a new thread then returning immediately.
    */
   public synchronized void beginOnNewThread() {
-    Preconditions.checkState(runnerThread == null, "Cannot start running executive");
+    Preconditions.checkState(runnerThread == null, "Executive is already running");
     runnerThread = new Thread(this.new ExecutiveRunner());
     runnerThread.start();
   }
@@ -167,7 +167,7 @@ public class Executive {
    */
   public void beginOnCurrentThread() {
     synchronized (this) {
-      Preconditions.checkState(runnerThread == null, "Cannot start running executive");
+      Preconditions.checkState(runnerThread == null, "Executive is already running");
       runnerThread = Thread.currentThread();
     }
     this.new ExecutiveRunner().run();
@@ -217,8 +217,8 @@ public class Executive {
       try {
         Thread.sleep(COMMAND_COMPLETION_CHECK_MILLIS);
       } catch (InterruptedException e) {
-        // Nothing should interrupt the kill thread, 
-        LOG.warning("Recieved interrupt on the termination thread, ignoring");
+        // Nothing should interrupt the kill thread.
+        LOG.warning("Received interrupt on the termination thread, ignoring");
         Thread.currentThread().interrupt();
       }
     }

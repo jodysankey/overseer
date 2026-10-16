@@ -19,13 +19,13 @@ public class ReadOnlyIterator<T> implements Iterator<T> {
     this.wrapped = iterator;
   }
 
-    @Override
+  @Override
   public boolean hasNext() {
-   return wrapped.hasNext();
+    return wrapped.hasNext();
   }
 
   @Override
-    public T next() {
+  public T next() {
     return wrapped.next();
   }
 }

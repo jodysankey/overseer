@@ -62,11 +62,11 @@ abstract class ConnectionParser {
   }
 
   /**
-   * Returns the next command from the socket, or null if an problem occurred. IO necessary to 
+   * Returns the next command from the socket, or null if a problem occurred. IO necessary to 
    * comply with protocol specific requirements may be conducted before the command is returned.
    *
    * @throws InterruptedException if close is requested
-   * @throws IOException is an IOError occurs or EOF is reached
+   * @throws IOException if an IOError occurs or EOF is reached
    * @throws UpgradeRequestedException if the remote host asks to upgrade to a web socket
    */
   public abstract Command receiveInput()
@@ -75,7 +75,7 @@ abstract class ConnectionParser {
   /**
    * Outputs a supplied {@link JsonStructure} on the socket.
    *
-   * @throws IOException is an IOError occurs
+   * @throws IOException if an IOError occurs
    */
   public abstract void sendJson(JsonStructure json) throws IOException;
 
@@ -92,7 +92,7 @@ abstract class ConnectionParser {
    * provisioned length.
    *
    * @throws InterruptedException if close is requested
-   * @throws IOException is an IOError occurs or EOF is reached
+   * @throws IOException if an IOError occurs or EOF is reached
    */
   protected String readToLf() throws InterruptedException, IOException {
     ByteArrayOutputStream buffer = new ByteArrayOutputStream();
@@ -106,8 +106,8 @@ abstract class ConnectionParser {
           if (buffer.size() > INPUT_SIZE) {
             return null;
           } else {
-          return buffer.toString();
-            }
+            return buffer.toString();
+          }
         } else if (buffer.size() <= INPUT_SIZE) {
           buffer.write(b);
         }

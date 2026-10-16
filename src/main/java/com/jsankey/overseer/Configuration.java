@@ -47,7 +47,7 @@ public class Configuration {
         .accepts("ssid", "Only attempt to run commands while connected to this wifi SSID.")
         .withRequiredArg();
     LOG_FILE_SPEC = PARSER
-        .accepts("log_file", "Location of log file. Log will be output to stdout if ommited.")
+        .accepts("log_file", "Location of log file. Log will be output to stdout if omitted.")
         .withRequiredArg();
     STATUS_FILE_SPEC = PARSER
         .accepts("status_file", "Optional file to cache and restore command execution status, "
@@ -99,7 +99,7 @@ public class Configuration {
   /**
    * Construct a new {@link Configuration} from a command line argument array.
    * 
-   * @param arguments Array of strings as supplied a program initialization
+   * @param arguments Array of strings as supplied at program initialization
    */
   public static Configuration from(String[] arguments) throws OptionException {
     return new Configuration(arguments);

@@ -43,7 +43,7 @@ class TextConnectionParser extends ConnectionParser {
   @Override
   public void sendJson(JsonStructure json) throws IOException {
     ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-    Json.createWriter(buffer).write(json);;
+    Json.createWriter(buffer).write(json);
     buffer.write('\n');
     writeWithFlush(buffer.toByteArray());
   }

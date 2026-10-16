@@ -92,12 +92,12 @@ public class SocketConnection implements Runnable, StatusListener {
         Command.STATUS.execute(parser, executive);
       } catch (IOException e) {
         // If we fail once, we'll probably fail again. Shut the socket down so the executive
-        // thread doesn't  have to deal with this.
+        // thread doesn't have to deal with this.
         LOG.warning(String.format("Exception receiving status in connection %s, closing socket",
             parser.getSocketName(), e));
         parser.initiateClose();
       }
-      if(status == Status.TERMINATED) {
+      if (status == Status.TERMINATED) {
         LOG.info(String.format("Sending close on termination for %s", parser.getSocketName()));
         try {
           Command.CLOSE.execute(parser, executive);

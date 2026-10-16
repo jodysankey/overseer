@@ -54,7 +54,7 @@ public class OverseerApplication {
   }
 
   /**
-   * Starts the executive then Waits forever without consuming much CPU until it exits.
+   * Starts the executive then waits forever without consuming much CPU until it exits.
    */
   private void run() {
     exec.beginOnCurrentThread();
@@ -84,7 +84,7 @@ public class OverseerApplication {
       System.out.println(String.format("  %s%n", e.toString()));
       Configuration.printHelpOn(System.out);
       System.exit(PARSE_ERROR_EXIT_CODE);
-	}
+    }
     return config;
   }
 
